@@ -1,4 +1,4 @@
-# 🖨️ SECUREPRINT - SaaS Print Shop & Document Management System
+# 🖨️ SECUREPRINT (stm) - SaaS Print Shop & Document Management System
 
 A high-performance, SaaS-based secure document printing platform featuring real-time Socket.io print queues, automatic customer QR code generation, local silent print spooling, document retention auto-purging, and a dedicated Super Admin SaaS Console.
 
@@ -18,10 +18,10 @@ The software is structured around **2 main system roles**:
 
 ---
 
-## 📁 Repository Structure
+## 📁 Single Monorepo Repository Structure
 
 ```
-secure-print-shop/
+stm/ (Single Repository: https://github.com/YuvaSky/stm)
 ├── backend/          # Express API Server + Socket.io + MongoDB Models (Port 5000)
 ├── frontend/         # Customer Document Upload & Shopkeeper Counter Portal (Port 3001)
 ├── super-admin/      # Standalone SaaS Super Admin Console (Port 3003)
@@ -35,7 +35,7 @@ secure-print-shop/
 Follow these steps to invite team members to this GitHub repository so they can clone, contribute, and manage the project with you:
 
 ### Step 1: Open GitHub Repository Settings
-1. Go to your GitHub repository in your web browser (e.g., `https://github.com/your-username/secure-print-shop`).
+1. Go to your GitHub repository: `https://github.com/YuvaSky/stm`.
 2. Click on the **Settings** tab in the top repository menu bar.
 
 ### Step 2: Add Collaborator
@@ -46,7 +46,7 @@ Follow these steps to invite team members to this GitHub repository so they can 
 
 ### Step 3: Accept Invitation
 1. The invited developer will receive an email invitation and a notification on GitHub.
-2. Direct them to accept the invitation at: `https://github.com/your-username/secure-print-shop/invitations`.
+2. Direct them to accept the invitation at: `https://github.com/YuvaSky/stm/invitations`.
 3. Once accepted, they have full clone and commit access!
 
 ---
@@ -57,8 +57,8 @@ Once a developer accepts your GitHub invitation, they can follow these steps to 
 
 ### 1. Clone Repository
 ```bash
-git clone https://github.com/your-username/secure-print-shop.git
-cd secure-print-shop
+git clone https://github.com/YuvaSky/stm.git
+cd stm
 ```
 
 ### 2. Install Dependencies
@@ -116,9 +116,3 @@ cd frontend && npx vite build
 # Build Super Admin Console
 cd super-admin && npx vite build
 ```
-
----
-
-## 🔒 Security & Retention
-* Document Auto-Purge timer defaults to **60 minutes** after order completion (configurable in Super Admin settings).
-* Mobile & Wi-Fi local network access supported via `--host` for scanning counter QR codes on smartphones.
