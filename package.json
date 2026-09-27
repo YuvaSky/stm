@@ -1,0 +1,23 @@
+{
+  "name": "secure-print-shop",
+  "version": "1.0.0",
+  "description": "Secure Print, Photocopy & Document Management System",
+  "main": "backend/server.js",
+  "scripts": {
+    "start": "node backend/server.js",
+    "dev:backend": "node backend/server.js",
+    "dev:frontend": "cd frontend && npm run dev",
+    "agent": "node print-agent/agent.js",
+    "seed": "node backend/seed.js"
+  },
+  "keywords": [
+    "print-shop",
+    "mongodb",
+    "express",
+    "react",
+    "local-print-agent",
+    "secure-handover"
+  ],
+  "author": "Antigravity",
+  "license": "ISC"
+}
