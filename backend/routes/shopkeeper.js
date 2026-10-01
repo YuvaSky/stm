@@ -7,8 +7,8 @@ const Document = require('../models/Document');
 const PrintSetting = require('../models/PrintSetting');
 const PrintJob = require('../models/PrintJob');
 const Printer = require('../models/Printer');
-const AuditLog = require('../models/AuditLog');
-const Shop = require('../models/Shop');
+const User = require('../models/User');
+const bcrypt = require('bcryptjs');
 const { hashToken } = require('../utils/idGenerator');
 const { dispatchPrintJob } = require('../utils/printDispatcher');
 
@@ -525,6 +525,54 @@ router.post('/test-print', async (req, res) => {
       message: isOnline
         ? `✅ Test print signal (${testJobId}) dispatched to connected Local Print Agent!`
         : `⚠️ Test print signal (${testJobId}) sent to WebSocket queue. Start 'npm start' in print-agent to process.`
+    });
+  } catch (err) {
+    res.status(500).json({ success: false, message: err.message });
+  }
+});
+
+// Get list of all staff members under shopkeeper
+router.get('/staff', async (req, res) => {
+  try {
+    const staffMembers = await User.find({ role: 'STAFF' }).select('-passwordHash').sort({ createdAt: -1 });
+    res.json({ success: true, staff: staffMembers });
+  } catch (err) {
+    res.status(500).json({ success: false, message: err.message });
+  }
+});
+
+// Create a new staff member (counter operator)
+router.post('/staff', async (req, res) => {
+  try {
+    const { name, mobile, password } = req.body;
+    if (!name || !mobile || !password) {
+      return res.status(400).json({ success: false, message: 'Name, Mobile Number, and Password are required for staff.' });
+    }
+
+    const existing = await User.findOne({ mobile });
+    if (existing) {
+      return res.status(400).json({ success: false, message: 'A staff or user account with this mobile number already exists.' });
+    }
+
+    const salt = await bcrypt.genSalt(10);
+    const passwordHash = await bcrypt.hash(password, salt);
+
+    const newStaff = await User.create({
+      name,
+      mobile,
+      passwordHash,
+      role: 'STAFF'
+    });
+
+    res.json({
+      success: true,
+      message: `✅ Counter Staff ${name} created successfully!`,
+      staff: {
+        _id: newStaff._id,
+        name: newStaff.name,
+        mobile: newStaff.mobile,
+        role: newStaff.role
+      }
     });
   } catch (err) {
     res.status(500).json({ success: false, message: err.message });

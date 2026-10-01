@@ -421,12 +421,10 @@ export default function ShopkeeperDashboard({ setCurrentView }) {
         </div>
         <div className="text-center">
           <h3 className="text-lg font-extrabold text-slate-900">
-            {isRegistering ? 'Register Your Print Shop' : 'Shopkeeper Counter Login'}
+            Shopkeeper Counter Login
           </h3>
           <p className="text-xs text-slate-500 mt-1">
-            {isRegistering
-              ? 'Create a shopkeeper account to generate your counter QR code & receive customer orders.'
-              : 'Sign in to access your print queue, live WebSocket jobs, and counter QR code.'}
+            Sign in to access your print queue, live WebSocket jobs, and counter QR code.
           </p>
         </div>
 
@@ -436,117 +434,43 @@ export default function ShopkeeperDashboard({ setCurrentView }) {
           </div>
         )}
 
-        {isRegistering ? (
-          /* Shopkeeper Self-Registration Form */
-          <form onSubmit={handleShopkeeperRegister} className="space-y-3 text-xs">
-            <div>
-              <label className="font-bold text-slate-700 block mb-1">Shopkeeper Full Name</label>
-              <input
-                type="text"
-                required
-                placeholder="e.g. Ramesh Kumar"
-                value={regName}
-                onChange={(e) => setRegName(e.target.value)}
-                className="w-full bg-slate-50 border border-slate-300 rounded-xl p-2.5 text-slate-900 font-semibold focus:outline-none focus:border-blue-600"
-              />
-            </div>
+        {/* Shopkeeper Sign In Form */}
+        <form onSubmit={handleStaffLogin} className="space-y-3 text-xs">
+          <div>
+            <label className="font-bold text-slate-700 block mb-1">Mobile Number</label>
+            <input
+              type="tel"
+              required
+              placeholder="Enter registered mobile number"
+              value={loginMobile}
+              onChange={(e) => setLoginMobile(e.target.value)}
+              className="w-full bg-slate-50 border border-slate-300 rounded-xl p-2.5 text-slate-900 font-mono focus:outline-none focus:border-blue-600"
+            />
+          </div>
 
-            <div>
-              <label className="font-bold text-slate-700 block mb-1">Shop / Stationery Name</label>
-              <input
-                type="text"
-                placeholder="e.g. Ramesh Digital Prints & Xerox"
-                value={regShopName}
-                onChange={(e) => setRegShopName(e.target.value)}
-                className="w-full bg-slate-50 border border-slate-300 rounded-xl p-2.5 text-slate-900 font-semibold focus:outline-none focus:border-blue-600"
-              />
-            </div>
+          <div>
+            <label className="font-bold text-slate-700 block mb-1">Password</label>
+            <input
+              type="password"
+              required
+              placeholder="Enter password"
+              value={loginPassword}
+              onChange={(e) => setLoginPassword(e.target.value)}
+              className="w-full bg-slate-50 border border-slate-300 rounded-xl p-2.5 text-slate-900 font-medium focus:outline-none focus:border-blue-600"
+            />
+          </div>
 
-            <div>
-              <label className="font-bold text-slate-700 block mb-1">Mobile Number (Login ID)</label>
-              <input
-                type="tel"
-                required
-                placeholder="e.g. 9876543210"
-                value={regMobile}
-                onChange={(e) => setRegMobile(e.target.value)}
-                className="w-full bg-slate-50 border border-slate-300 rounded-xl p-2.5 text-slate-900 font-mono focus:outline-none focus:border-blue-600"
-              />
-            </div>
+          <button
+            type="submit"
+            className="w-full py-2.5 bg-blue-600 hover:bg-blue-500 text-white font-extrabold text-xs rounded-xl shadow-xs transition-all mt-2 cursor-pointer"
+          >
+            SIGN IN TO SHOP DASHBOARD
+          </button>
 
-            <div>
-              <label className="font-bold text-slate-700 block mb-1">Create Password</label>
-              <input
-                type="password"
-                required
-                placeholder="Create password"
-                value={regPassword}
-                onChange={(e) => setRegPassword(e.target.value)}
-                className="w-full bg-slate-50 border border-slate-300 rounded-xl p-2.5 text-slate-900 font-medium focus:outline-none focus:border-blue-600"
-              />
-            </div>
-
-            <button
-              type="submit"
-              disabled={loading}
-              className="w-full py-3 bg-blue-600 hover:bg-blue-500 text-white font-extrabold text-xs rounded-xl shadow-md transition-all active:scale-95 mt-2"
-            >
-              {loading ? 'Creating Account...' : 'REGISTER & GET UNIQUE QR CODE'}
-            </button>
-
-            <button
-              type="button"
-              onClick={() => { setIsRegistering(false); setLoginError(''); }}
-              className="w-full py-2 text-slate-600 font-bold text-xs hover:underline text-center block mt-1"
-            >
-              Already have a shop account? Sign In
-            </button>
-          </form>
-        ) : (
-          /* Shopkeeper Sign In Form */
-          <form onSubmit={handleStaffLogin} className="space-y-3 text-xs">
-            <div>
-              <label className="font-bold text-slate-700 block mb-1">Mobile Number</label>
-              <input
-                type="tel"
-                required
-                placeholder="Enter registered mobile number"
-                value={loginMobile}
-                onChange={(e) => setLoginMobile(e.target.value)}
-                className="w-full bg-slate-50 border border-slate-300 rounded-xl p-2.5 text-slate-900 font-mono focus:outline-none focus:border-blue-600"
-              />
-            </div>
-
-            <div>
-              <label className="font-bold text-slate-700 block mb-1">Password</label>
-              <input
-                type="password"
-                required
-                placeholder="Enter password"
-                value={loginPassword}
-                onChange={(e) => setLoginPassword(e.target.value)}
-                className="w-full bg-slate-50 border border-slate-300 rounded-xl p-2.5 text-slate-900 font-medium focus:outline-none focus:border-blue-600"
-              />
-            </div>
-
-            <button
-              type="submit"
-              className="w-full py-2.5 bg-blue-600 hover:bg-blue-500 text-white font-extrabold text-xs rounded-xl shadow-xs transition-all mt-2"
-            >
-              SIGN IN TO SHOP DASHBOARD
-            </button>
-
-            <div className="pt-2 border-t border-slate-100 flex items-center justify-center text-xs">
-              <button
-                type="button"
-                onClick={() => { setIsRegistering(true); setLoginError(''); }}
-                className="text-purple-700 font-extrabold hover:underline"
-              >
-                + Register New Shopkeeper Account
-              </button>
-            </div>
-          </form>
-        )}
+          <div className="pt-3 border-t border-slate-100 text-center text-[11px] text-slate-500 font-medium">
+            🔒 <span className="font-bold text-slate-700">Need a Shopkeeper Account?</span> Contact Platform Admin. Only Admin can create shopkeeper accounts.
+          </div>
+        </form>
 
         <div className="pt-2 text-center border-t border-slate-100">
           <button

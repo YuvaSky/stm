@@ -267,16 +267,31 @@ export default function DocumentReviewModal({ isOpen, onClose, document: doc, on
         </div>
 
         {/* Modal Footer */}
-        <div className="px-6 py-4 bg-slate-50 border-t border-slate-200 flex items-center justify-between shrink-0">
+        <div className="px-6 py-4 bg-slate-50 border-t border-slate-200 flex flex-col sm:flex-row items-center justify-between gap-3 shrink-0">
           <span className="text-xs text-slate-500 font-medium hidden sm:inline">
             Verify pages before placing order.
           </span>
-          <button
-            onClick={onClose}
-            className="w-full sm:w-auto px-6 py-2.5 bg-slate-900 hover:bg-slate-800 text-white font-bold text-xs rounded-xl shadow transition-all"
-          >
-            Confirm & Save Settings
-          </button>
+          <div className="flex items-center space-x-2 w-full sm:w-auto justify-end">
+            {onOpenCardStudio && (
+              <button
+                type="button"
+                onClick={() => {
+                  onClose();
+                  onOpenCardStudio(doc);
+                }}
+                className="px-4 py-2.5 bg-cyan-600 hover:bg-cyan-500 text-white font-extrabold text-xs rounded-xl shadow transition-all flex items-center gap-1.5"
+              >
+                <Sparkles className="w-4 h-4" />
+                <span>Open Passport & Print Layout Studio</span>
+              </button>
+            )}
+            <button
+              onClick={onClose}
+              className="px-5 py-2.5 bg-slate-900 hover:bg-slate-800 text-white font-bold text-xs rounded-xl shadow transition-all"
+            >
+              Confirm & Save Settings
+            </button>
+          </div>
         </div>
 
       </div>

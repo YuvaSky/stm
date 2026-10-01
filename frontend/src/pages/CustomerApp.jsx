@@ -7,6 +7,8 @@ import { QRCodeSVG } from 'qrcode.react';
 import CameraCaptureModal from '../components/CameraCaptureModal';
 import DocumentScannerModal from '../components/DocumentScannerModal';
 import DocumentReviewModal from '../components/DocumentReviewModal';
+import AadhaarIdUploadModal from '../components/AadhaarIdUploadModal';
+import CardPrintReviewModal from '../components/CardPrintReviewModal';
 
 
 // Helper to parse page range strings like "1-5", "2,3,4", "1 to 5"
@@ -48,6 +50,8 @@ export default function CustomerApp() {
   const [reviewingDoc, setReviewingDoc] = useState(null);
   const [isCameraCaptureOpen, setIsCameraCaptureOpen] = useState(false);
   const [isDocumentScannerOpen, setIsDocumentScannerOpen] = useState(false);
+  const [isAadhaarUploadOpen, setIsAadhaarUploadOpen] = useState(false);
+  const [cardReviewData, setCardReviewData] = useState(null);
   const [paymentMethod, setPaymentMethod] = useState('UPI');
   const [totalPrice, setTotalPrice] = useState(0);
   const [activeOrder, setActiveOrder] = useState(null);
@@ -168,25 +172,31 @@ export default function CustomerApp() {
           const pageImages = uploadedDocs.map(d => d.fileUrl);
           const combinedDoc = {
             id: `doc_${Date.now()}`,
-            originalFileName: `Front & Back Photos (${uploadedDocs.length} Images)`,
+            originalFileName: `Two-Sided Card / Document (${uploadedDocs.length} Photos)`,
             fileType: 'image',
             fileUrl: uploadedDocs[0].fileUrl,
+            frontUrl: uploadedDocs[0].fileUrl,
+            backUrl: uploadedDocs[1].fileUrl,
             pageImages: pageImages,
             tempPath: uploadedDocs[0].tempPath,
             allTempPaths: uploadedDocs.map(d => d.tempPath),
             totalPages: 1, // 1 sheet for Front & Back layout
             pageCount: 1,
             combine2On1: true,
+            layoutMode: 'SIDE_BY_SIDE',
+            sizeMode: 'ACTUAL',
             pageRange: 'ALL',
             pageSelectionMode: 'ALL',
             pageRangeInput: '1',
             selectedPages: [1],
             paperSize: 'A4',
+            orientation: 'PORTRAIT',
             colorMode: 'BW',
             sides: 'SINGLE',
             copies: 1
           };
           setDocuments(prev => [...prev, combinedDoc]);
+          setCardReviewData(combinedDoc);
         } else {
           // Standard single file / PDF upload mapping
           const newDocs = uploadedDocs.map(d => {
@@ -542,12 +552,20 @@ export default function CustomerApp() {
                   <div className="flex items-center space-x-2 self-end sm:self-center">
                     <button
                       type="button"
-                      onClick={() => setReviewingDoc(doc)}
-                      className="px-3 py-1.5 rounded-xl bg-white hover:bg-slate-100 text-cyan-700 font-bold text-xs border border-slate-200 shadow-2xs flex items-center gap-1.5 transition-all"
-                      title="Review document details, inspect pages one by one, and preview"
+                      onClick={() => {
+                        // Open Card & Photo Studio Print Review Modal for images & cards
+                        setCardReviewData({
+                          ...doc,
+                          frontUrl: doc.frontUrl || doc.pageImages?.[0] || doc.fileUrl,
+                          backUrl: doc.backUrl || doc.pageImages?.[1] || doc.fileUrl,
+                          pageImages: doc.pageImages || [doc.fileUrl].filter(Boolean)
+                        });
+                      }}
+                      className="px-3.5 py-1.5 rounded-xl bg-cyan-600 hover:bg-cyan-500 text-white font-extrabold text-xs shadow-sm flex items-center gap-1.5 transition-all cursor-pointer"
+                      title="Open Print Studio Review to set layout, passport sizes, copies, and A4 preview"
                     >
-                      <Eye className="w-3.5 h-3.5 text-cyan-600" />
-                      <span>Review & Preview</span>
+                      <Eye className="w-3.5 h-3.5 text-white" />
+                      <span>Print Studio Layout Review</span>
                     </button>
 
                     <button
@@ -945,6 +963,14 @@ export default function CustomerApp() {
         isOpen={!!reviewingDoc}
         onClose={() => setReviewingDoc(null)}
         document={reviewingDoc}
+        onOpenCardStudio={(d) => {
+          setCardReviewData({
+            ...d,
+            frontUrl: d.frontUrl || d.pageImages?.[0] || d.fileUrl,
+            backUrl: d.backUrl || d.pageImages?.[1] || d.fileUrl,
+            pageImages: d.pageImages || [d.fileUrl].filter(Boolean)
+          });
+        }}
         onDeleteDocument={(docId) => {
           setDocuments(prev => prev.filter(d => d.id !== docId && d._id !== docId));
         }}
@@ -954,6 +980,39 @@ export default function CustomerApp() {
         }}
       />
 
+      <AadhaarIdUploadModal
+        isOpen={isAadhaarUploadOpen}
+        onClose={() => setIsAadhaarUploadOpen(false)}
+        onAddMergedDoc={(newDoc) => {
+          setDocuments(prev => [...prev, newDoc]);
+        }}
+      />
+
+      {cardReviewData && (
+        <CardPrintReviewModal
+          isOpen={!!cardReviewData}
+          onClose={() => setCardReviewData(null)}
+          cardData={cardReviewData}
+          onUpdateCard={(updated) => setCardReviewData(updated)}
+          onConfirmPrint={(printConfig) => {
+            // Apply selected print config to document settings
+            setDocuments(prev => prev.map(d => {
+              if (d.id === cardReviewData.id || d._id === cardReviewData.id) {
+                return {
+                  ...d,
+                  paperSize: printConfig.paperSize,
+                  copies: printConfig.copies,
+                  layoutMode: printConfig.layoutMode,
+                  sizeMode: printConfig.sizeMode,
+                  orientation: printConfig.orientation
+                };
+              }
+              return d;
+            }));
+            setCardReviewData(null);
+          }}
+        />
+      )}
 
     </div>
   );
