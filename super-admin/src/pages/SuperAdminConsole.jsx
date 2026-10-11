@@ -31,6 +31,7 @@ export default function SuperAdminConsole() {
 
   const [copiedShopId, setCopiedShopId] = useState(null);
   const [selectedQrShopkeeper, setSelectedQrShopkeeper] = useState(null);
+  const [selectedShopDetail, setSelectedShopDetail] = useState(null);
 
   // Search & Role Filter
   const [activeRoleFilter, setActiveRoleFilter] = useState('ALL');
@@ -111,11 +112,20 @@ export default function SuperAdminConsole() {
     delete axios.defaults.headers.common['Authorization'];
   };
 
+  const handleAuthError = (err) => {
+    if (err.response?.status === 401 || err.response?.status === 403 || err.response?.status === 404) {
+      console.warn('Session expired, unauthenticated, or endpoint forbidden. Logging out.');
+      handleLogout();
+    }
+  };
+
   const fetchAnalytics = async () => {
     try {
       const res = await axios.get('/api/admin/analytics');
       if (res.data.success) setAnalytics(res.data.stats);
-    } catch (_) {}
+    } catch (err) {
+      handleAuthError(err);
+    }
   };
 
   const fetchSettings = async () => {
@@ -125,35 +135,45 @@ export default function SuperAdminConsole() {
         if (res.data.shop.settings?.pricing) setPricing(res.data.shop.settings.pricing);
         if (res.data.shop.settings?.retentionMinutes) setRetentionMinutes(res.data.shop.settings.retentionMinutes);
       }
-    } catch (_) {}
+    } catch (err) {
+      handleAuthError(err);
+    }
   };
 
   const fetchUsers = async () => {
     try {
       const res = await axios.get('/api/admin/users');
       if (res.data.success) setUserList(res.data.users);
-    } catch (_) {}
+    } catch (err) {
+      handleAuthError(err);
+    }
   };
 
   const fetchStaff = async () => {
     try {
       const res = await axios.get('/api/admin/staff');
       if (res.data.success) setStaffList(res.data.staff);
-    } catch (_) {}
+    } catch (err) {
+      handleAuthError(err);
+    }
   };
 
   const fetchPrinters = async () => {
     try {
       const res = await axios.get('/api/admin/printers');
       if (res.data.success) setPrinters(res.data.printers);
-    } catch (_) {}
+    } catch (err) {
+      handleAuthError(err);
+    }
   };
 
   const fetchAuditLogs = async () => {
     try {
       const res = await axios.get('/api/admin/audit-logs');
       if (res.data.success) setAuditLogs(res.data.logs);
-    } catch (_) {}
+    } catch (err) {
+      handleAuthError(err);
+    }
   };
 
   const handleCreateUser = async (e) => {
@@ -167,9 +187,9 @@ export default function SuperAdminConsole() {
     try {
       const res = await axios.post('/api/admin/users', newUser);
       if (res.data.success) {
-        setSaveSuccess(`✅ Account '${newUser.name}' (${newUser.role}) created successfully!`);
+        setSaveSuccess(res.data.message || `✅ Account '${newUser.name}' (${newUser.role}) created successfully!`);
         setIsAddUserOpen(false);
-        setNewUser({ name: '', mobile: '', email: '', password: '', role: 'STAFF', shopName: '' });
+        setNewUser({ name: '', mobile: '', email: '', password: '', role: 'STAFF', shopName: '', address: '' });
         fetchUsers();
         fetchStaff();
         fetchAnalytics();
@@ -304,13 +324,17 @@ export default function SuperAdminConsole() {
 
           <form onSubmit={handleLogin} className="space-y-4 text-xs font-semibold">
             <div>
-              <label className="font-bold text-slate-700 block mb-1.5">Mobile Number (Admin Login ID)</label>
+              <label className="font-bold text-slate-700 block mb-1.5">Mobile Number (10 Digits Login ID)</label>
               <input
                 type="tel"
                 required
-                placeholder="Enter registered mobile number"
+                maxLength={10}
+                placeholder="Enter 10-digit mobile number"
                 value={loginMobile}
-                onChange={(e) => setLoginMobile(e.target.value)}
+                onChange={(e) => {
+                  const val = e.target.value.replace(/\D/g, '');
+                  if (val.length <= 10) setLoginMobile(val);
+                }}
                 className="w-full bg-slate-50 border border-slate-300 rounded-xl p-3 text-slate-900 font-mono text-sm focus:outline-none focus:border-purple-600 focus:bg-white transition-all"
               />
             </div>
@@ -350,48 +374,51 @@ export default function SuperAdminConsole() {
   return (
     <div className="min-h-screen bg-slate-50 text-slate-900 font-['Plus_Jakarta_Sans',sans-serif] pb-12">
       
-      {/* Sleek White Top Navigation Bar */}
-      <header className="sticky top-0 z-50 bg-white/95 backdrop-blur-md border-b border-slate-200 px-4 sm:px-8 py-3.5 flex items-center justify-between shadow-xs">
-        <div className="flex items-center space-x-3">
-          <div className="w-10 h-10 rounded-2xl bg-gradient-to-tr from-purple-600 to-indigo-600 text-white flex items-center justify-center shadow-md shadow-purple-600/20">
-            <Shield className="w-5 h-5" />
+      {/* Sleek Modern Header */}
+      <header className="sticky top-0 z-50 bg-white/95 backdrop-blur-xl border-b border-slate-200 px-6 sm:px-10 py-4 flex items-center justify-between shadow-xs">
+        <div className="flex items-center space-x-4">
+          <div className="w-11 h-11 rounded-2xl bg-gradient-to-tr from-purple-600 via-indigo-600 to-blue-600 text-white flex items-center justify-center shadow-lg shadow-purple-600/25 shrink-0">
+            <Shield className="w-6 h-6" />
           </div>
           <div>
-            <div className="flex items-center gap-2">
-              <span className="font-black text-lg text-slate-900 tracking-tight">SECURE<span className="text-purple-600">PRINT</span></span>
-              <span className="text-[10px] font-black px-2.5 py-0.5 rounded-full bg-purple-100 text-purple-800 border border-purple-200 uppercase">
-                SUPER ADMIN PORTAL
+            <div className="flex items-center gap-2.5">
+              <span className="font-black text-xl text-slate-900 tracking-tight">SECURE<span className="text-purple-600">PRINT</span></span>
+              <span className="text-[10px] font-black px-3 py-1 rounded-full bg-purple-50 text-purple-700 border border-purple-200/80 uppercase tracking-wide">
+                SUPER ADMIN PLATFORM
               </span>
             </div>
-            <p className="text-[11px] text-slate-500 font-semibold hidden sm:block">Central Control System & User Registration Management</p>
+            <p className="text-xs text-slate-500 font-semibold hidden sm:block mt-0.5">Central Multi-Tenant Shop Control & User Directory</p>
           </div>
         </div>
 
-        <div className="flex items-center space-x-3">
+        <div className="flex items-center space-x-4">
           <button
-            onClick={() => setIsAddUserOpen(true)}
-            className="px-4 py-2 rounded-xl bg-purple-600 hover:bg-purple-500 text-white font-extrabold text-xs shadow-md flex items-center gap-1.5 transition-all active:scale-95"
+            onClick={() => {
+              setNewUser({ name: '', mobile: '', email: '', password: '', role: 'ADMIN', shopName: '', address: '' });
+              setIsAddUserOpen(true);
+            }}
+            className="px-5 py-2.5 rounded-2xl bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-500 hover:to-indigo-500 text-white font-extrabold text-xs shadow-md shadow-purple-600/20 flex items-center gap-2 transition-all hover:scale-[1.02] active:scale-95 cursor-pointer shrink-0"
           >
-            <UserPlus className="w-4 h-4" />
-            <span className="hidden sm:inline">Register New Account</span>
-            <span className="sm:hidden">Register</span>
+            <Shield className="w-4 h-4" />
+            <span className="hidden sm:inline">Add Admin</span>
+            <span className="sm:hidden">+ Admin</span>
           </button>
 
-          <div className="h-6 w-px bg-slate-200 hidden sm:block" />
+          <div className="h-7 w-px bg-slate-200 hidden sm:block" />
 
           {/* Admin Profile & Logout */}
-          <div className="flex items-center space-x-2 bg-slate-100 px-3 py-1.5 rounded-xl border border-slate-200 text-xs">
-            <div className="w-6.5 h-6.5 rounded-full bg-purple-600 text-white font-bold text-xs flex items-center justify-center">
+          <div className="flex items-center space-x-2.5 bg-slate-50 hover:bg-slate-100/80 px-3.5 py-2 rounded-2xl border border-slate-200 transition-colors text-xs shrink-0">
+            <div className="w-8 h-8 rounded-xl bg-gradient-to-br from-purple-600 to-indigo-600 text-white font-bold text-xs flex items-center justify-center shadow-xs shrink-0">
               {adminUser.name.charAt(0)}
             </div>
-            <div className="hidden sm:block text-left">
-              <p className="text-xs font-extrabold text-slate-900 leading-tight">{adminUser.name}</p>
-              <span className="text-[9px] text-purple-700 font-bold uppercase">{adminUser.role}</span>
+            <div className="hidden sm:block text-left pr-1">
+              <p className="text-xs font-black text-slate-900 leading-tight">{adminUser.name}</p>
+              <span className="text-[9px] text-purple-700 font-extrabold uppercase tracking-wider block">{adminUser.role}</span>
             </div>
             <button
               onClick={handleLogout}
               title="Sign out"
-              className="ml-1 text-slate-400 hover:text-rose-600 transition-colors p-1"
+              className="ml-1 text-slate-400 hover:text-rose-600 transition-colors p-1.5 rounded-xl hover:bg-rose-50 cursor-pointer"
             >
               <LogOut className="w-4 h-4" />
             </button>
@@ -400,299 +427,232 @@ export default function SuperAdminConsole() {
       </header>
 
       {/* Main Container */}
-      <div className="max-w-7xl mx-auto px-4 sm:px-8 py-6 space-y-6">
+      <div className="max-w-7xl mx-auto px-4 sm:px-8 py-8 space-y-8">
 
         {saveSuccess && (
-          <div className="p-4 bg-emerald-50 border border-emerald-200 text-emerald-800 text-xs sm:text-sm rounded-2xl font-bold flex items-center gap-2 shadow-xs">
-            <Check className="w-4.5 h-4.5 text-emerald-600 shrink-0" />
+          <div className="p-4 bg-emerald-50/90 border border-emerald-200 text-emerald-900 text-xs sm:text-sm rounded-2xl font-bold flex items-center gap-2.5 shadow-sm animate-fade-in">
+            <Check className="w-5 h-5 text-emerald-600 shrink-0" />
             <span>{saveSuccess}</span>
           </div>
         )}
 
         {/* Crisp White Summary Metrics Cards */}
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-3 sm:gap-4 text-xs font-semibold">
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-5 text-xs font-semibold">
           
-          <div className="bg-white border border-slate-200 rounded-3xl p-4 sm:p-5 flex items-center space-x-3.5 shadow-sm">
-            <div className="w-11 h-11 rounded-2xl bg-purple-50 text-purple-700 flex items-center justify-center border border-purple-100 font-extrabold shrink-0">
-              <Users className="w-5 h-5" />
+          <div className="bg-white border border-slate-200/80 rounded-3xl p-6 flex items-center space-x-5 shadow-sm hover:shadow-md transition-shadow">
+            <div className="w-14 h-14 rounded-2xl bg-purple-50 text-purple-700 flex items-center justify-center border border-purple-100 font-extrabold shrink-0 shadow-xs">
+              <Users className="w-7 h-7" />
             </div>
             <div>
-              <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block">Total Accounts</span>
-              <span className="text-xl font-black text-slate-900">{analytics?.totalUsers || userList.length || 0}</span>
-              <span className="text-[10px] text-purple-700 font-bold block">{analytics?.totalStaff || 0} Shopkeepers</span>
+              <span className="text-[11px] font-extrabold text-slate-400 uppercase tracking-wider block">Total System Accounts</span>
+              <span className="text-3xl font-black text-slate-900 leading-tight">{analytics?.totalUsers || userList.length || 0}</span>
+              <span className="text-xs text-purple-700 font-extrabold block mt-0.5">{userList.filter(u => ['STAFF', 'MANAGER'].includes(u.role)).length} Active Shops</span>
             </div>
           </div>
 
-          <div className="bg-white border border-slate-200 rounded-3xl p-4 sm:p-5 flex items-center space-x-3.5 shadow-sm">
-            <div className="w-11 h-11 rounded-2xl bg-cyan-50 text-cyan-700 flex items-center justify-center border border-cyan-100 font-extrabold shrink-0">
-              <TrendingUp className="w-5 h-5" />
+          <div className="bg-white border border-slate-200/80 rounded-3xl p-6 flex items-center space-x-5 shadow-sm hover:shadow-md transition-shadow">
+            <div className="w-14 h-14 rounded-2xl bg-cyan-50 text-cyan-700 flex items-center justify-center border border-cyan-100 font-extrabold shrink-0 shadow-xs">
+              <TrendingUp className="w-7 h-7" />
             </div>
             <div>
-              <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block">Total Print Orders</span>
-              <span className="text-xl font-black text-slate-900">{analytics?.totalOrders || 0}</span>
-              <span className="text-[10px] text-cyan-700 font-bold block">{analytics?.activeQueue || 0} Active Queue</span>
-            </div>
-          </div>
-
-          <div className="bg-white border border-slate-200 rounded-3xl p-4 sm:p-5 flex items-center space-x-3.5 shadow-sm">
-            <div className="w-11 h-11 rounded-2xl bg-emerald-50 text-emerald-700 flex items-center justify-center border border-emerald-100 font-extrabold shrink-0">
-              <DollarSign className="w-5 h-5" />
-            </div>
-            <div>
-              <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block">Total Revenue</span>
-              <span className="text-xl font-black text-emerald-600">₹{analytics?.totalRevenue || 0}</span>
-              <span className="text-[10px] text-emerald-700 font-bold block">₹{analytics?.todayRevenue || 0} Today</span>
-            </div>
-          </div>
-
-          <div className="bg-white border border-slate-200 rounded-3xl p-4 sm:p-5 flex items-center space-x-3.5 shadow-sm">
-            <div className="w-11 h-11 rounded-2xl bg-indigo-50 text-indigo-700 flex items-center justify-center border border-indigo-100 font-extrabold shrink-0">
-              <Printer className="w-5 h-5" />
-            </div>
-            <div>
-              <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block">Configured Printers</span>
-              <span className="text-xl font-black text-slate-900">{printers.length || 1}</span>
-              <span className="text-[10px] text-indigo-700 font-bold block">ONLINE Hardware</span>
+              <span className="text-[11px] font-extrabold text-slate-400 uppercase tracking-wider block">Total Print Orders</span>
+              <span className="text-3xl font-black text-slate-900 leading-tight">{analytics?.totalOrders || 0}</span>
+              <span className="text-xs text-cyan-700 font-extrabold block mt-0.5">{analytics?.activeQueue || 0} Orders In Queue</span>
             </div>
           </div>
 
         </div>
 
-        {/* Console Navigation Tabs */}
-        <div className="flex items-center gap-2 overflow-x-auto pb-1 text-xs font-bold scrollbar-none border-b border-slate-200">
-          <button
-            onClick={() => setActiveTab('shopkeepers')}
-            className={`px-4 py-2.5 rounded-2xl whitespace-nowrap transition-all flex items-center gap-2 ${
-              activeTab === 'shopkeepers'
-                ? 'bg-purple-600 text-white shadow-md font-black'
-                : 'bg-white text-slate-600 hover:text-slate-900 border border-slate-200'
-            }`}
-          >
-            <Store className="w-4 h-4" />
-            <span>Registered Shopkeepers ({userList.filter(u => ['STAFF', 'MANAGER'].includes(u.role)).length})</span>
-          </button>
+        {/* Console Navigation Tabs with clean margins */}
+        <div className="my-6 border-b border-slate-200 pb-3">
+          <div className="flex items-center gap-3 overflow-x-auto text-xs font-bold scrollbar-none py-1">
+            <button
+              onClick={() => setActiveTab('shopkeepers')}
+              className={`px-5 py-3 rounded-2xl whitespace-nowrap transition-all flex items-center gap-2 cursor-pointer ${
+                activeTab === 'shopkeepers'
+                  ? 'bg-gradient-to-r from-purple-600 to-indigo-600 text-white shadow-md shadow-purple-600/20 font-black'
+                  : 'bg-white text-slate-600 hover:text-slate-900 hover:bg-slate-50 border border-slate-200'
+              }`}
+            >
+              <Store className="w-4 h-4" />
+              <span>Registered Shops ({userList.filter(u => ['STAFF', 'MANAGER', 'SHOPKEEPER'].includes(u.role)).length})</span>
+            </button>
 
-          <button
-            onClick={() => setActiveTab('users')}
-            className={`px-4 py-2.5 rounded-2xl whitespace-nowrap transition-all flex items-center gap-2 ${
-              activeTab === 'users'
-                ? 'bg-purple-600 text-white shadow-md font-black'
-                : 'bg-white text-slate-600 hover:text-slate-900 border border-slate-200'
-            }`}
-          >
-            <Users className="w-4 h-4" />
-            <span>All System Accounts ({userList.length})</span>
-          </button>
+            <button
+              onClick={() => setActiveTab('users')}
+              className={`px-5 py-3 rounded-2xl whitespace-nowrap transition-all flex items-center gap-2 cursor-pointer ${
+                activeTab === 'users'
+                  ? 'bg-gradient-to-r from-purple-600 to-indigo-600 text-white shadow-md shadow-purple-600/20 font-black'
+                  : 'bg-white text-slate-600 hover:text-slate-900 hover:bg-slate-50 border border-slate-200'
+              }`}
+            >
+              <Users className="w-4 h-4" />
+              <span>All System Accounts ({userList.length})</span>
+            </button>
 
-          <button
-            onClick={() => setActiveTab('analytics')}
-            className={`px-4 py-2.5 rounded-2xl whitespace-nowrap transition-all flex items-center gap-2 ${
-              activeTab === 'analytics'
-                ? 'bg-purple-600 text-white shadow-md font-black'
-                : 'bg-white text-slate-600 hover:text-slate-900 border border-slate-200'
-            }`}
-          >
-            <TrendingUp className="w-4 h-4" />
-            <span>Revenue & Store Analytics</span>
-          </button>
+            <button
+              onClick={() => setActiveTab('analytics')}
+              className={`px-5 py-3 rounded-2xl whitespace-nowrap transition-all flex items-center gap-2 cursor-pointer ${
+                activeTab === 'analytics'
+                  ? 'bg-gradient-to-r from-purple-600 to-indigo-600 text-white shadow-md shadow-purple-600/20 font-black'
+                  : 'bg-white text-slate-600 hover:text-slate-900 hover:bg-slate-50 border border-slate-200'
+              }`}
+            >
+              <TrendingUp className="w-4 h-4" />
+              <span>Revenue & Store Analytics</span>
+            </button>
 
-          <button
-            onClick={() => setActiveTab('printers')}
-            className={`px-4 py-2.5 rounded-2xl whitespace-nowrap transition-all flex items-center gap-2 ${
-              activeTab === 'printers'
-                ? 'bg-purple-600 text-white shadow-md font-black'
-                : 'bg-white text-slate-600 hover:text-slate-900 border border-slate-200'
-            }`}
-          >
-            <Printer className="w-4 h-4" />
-            <span>Printer Hardware ({printers.length})</span>
-          </button>
-
-          <button
-            onClick={() => setActiveTab('settings')}
-            className={`px-4 py-2.5 rounded-2xl whitespace-nowrap transition-all flex items-center gap-2 ${
-              activeTab === 'settings'
-                ? 'bg-purple-600 text-white shadow-md font-black'
-                : 'bg-white text-slate-600 hover:text-slate-900 border border-slate-200'
-            }`}
-          >
-            <DollarSign className="w-4 h-4" />
-            <span>Pricing Matrix & Auto-Purge</span>
-          </button>
-
-          <button
-            onClick={() => setActiveTab('logs')}
-            className={`px-4 py-2.5 rounded-2xl whitespace-nowrap transition-all flex items-center gap-2 ${
-              activeTab === 'logs'
-                ? 'bg-purple-600 text-white shadow-md font-black'
-                : 'bg-white text-slate-600 hover:text-slate-900 border border-slate-200'
-            }`}
-          >
-            <Activity className="w-4 h-4" />
-            <span>Security Audit Logs ({auditLogs.length})</span>
-          </button>
+            <button
+              onClick={() => setActiveTab('logs')}
+              className={`px-5 py-3 rounded-2xl whitespace-nowrap transition-all flex items-center gap-2 cursor-pointer ${
+                activeTab === 'logs'
+                  ? 'bg-gradient-to-r from-purple-600 to-indigo-600 text-white shadow-md shadow-purple-600/20 font-black'
+                  : 'bg-white text-slate-600 hover:text-slate-900 hover:bg-slate-50 border border-slate-200'
+              }`}
+            >
+              <Activity className="w-4 h-4" />
+              <span>Security Audit Logs ({auditLogs.length})</span>
+            </button>
+          </div>
         </div>
 
         {/* TAB 0: SaaS Registered Shopkeepers Portal */}
         {activeTab === 'shopkeepers' && (
-          <div className="bg-white rounded-3xl p-5 sm:p-6 border border-slate-200 shadow-sm space-y-5">
+          <div className="bg-white rounded-3xl p-6 sm:p-8 border border-slate-200/80 shadow-sm space-y-6">
             
-            <div className="flex flex-col md:flex-row md:items-center justify-between gap-3 border-b border-slate-100 pb-4">
+            <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4 border-b border-slate-100 pb-5">
               <div>
-                <h3 className="font-black text-lg text-slate-900 flex items-center gap-2">
-                  <Store className="w-5 h-5 text-purple-600" />
-                  Registered SaaS Shopkeepers Directory
+                <h3 className="font-black text-xl text-slate-900 flex items-center gap-3">
+                  <div className="p-2.5 rounded-2xl bg-purple-50 text-purple-600 border border-purple-100">
+                    <Store className="w-5 h-5" />
+                  </div>
+                  Registered SaaS Shops Directory
                 </h3>
-                <p className="text-xs text-slate-500 mt-0.5">
-                  Monitor registered print shopkeepers, counter status, and unique customer upload QR links.
+                <p className="text-xs text-slate-500 mt-1 font-medium">
+                  Monitor tenant shops, owner details, login accounts, and active counter status.
                 </p>
               </div>
 
-              <div className="flex flex-col sm:flex-row items-center gap-2">
-                <div className="relative w-full sm:w-64">
-                  <Search className="w-4 h-4 text-slate-400 absolute left-3 top-3" />
+              {/* Search Bar & Register Shop Button */}
+              <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3 w-full lg:w-auto">
+                <div className="relative w-full sm:w-72 lg:w-80">
+                  <Search className="w-4 h-4 text-slate-400 absolute left-3.5 top-3 pointer-events-none" />
                   <input
                     type="text"
-                    placeholder="Search shopkeeper, mobile..."
+                    placeholder="Search shop, owner, mobile..."
                     value={userSearchQuery}
                     onChange={(e) => setUserSearchQuery(e.target.value)}
-                    className="w-full bg-slate-50 border border-slate-300 rounded-xl pl-9 pr-3 py-2 text-xs font-semibold text-slate-900 focus:outline-none focus:border-purple-600 focus:bg-white"
+                    className="w-full bg-slate-50 border border-slate-200 rounded-xl pl-10 pr-4 py-2.5 text-xs font-semibold text-slate-900 focus:outline-none focus:border-purple-600 focus:bg-white focus:ring-2 focus:ring-purple-500/20 transition-all"
                   />
                 </div>
 
                 <button
                   onClick={() => {
-                    setNewUser({ name: '', mobile: '', email: '', password: '', role: 'STAFF', shopName: '' });
+                    setNewUser({ name: '', mobile: '', email: '', password: '', role: 'STAFF', shopName: '', address: '' });
                     setIsAddUserOpen(true);
                   }}
-                  className="w-full sm:w-auto px-4 py-2 rounded-xl bg-purple-600 hover:bg-purple-500 text-white font-extrabold text-xs shadow-md transition-all flex items-center justify-center gap-1.5"
+                  className="px-5 py-2.5 bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-500 hover:to-indigo-500 text-white font-extrabold text-xs rounded-xl shadow-md shadow-purple-600/20 transition-all flex items-center justify-center gap-2 hover:scale-[1.02] active:scale-95 cursor-pointer shrink-0"
                 >
                   <Plus className="w-4 h-4" />
-                  <span>Register Shopkeeper</span>
+                  <span>Register Shop</span>
                 </button>
               </div>
             </div>
 
-            {/* Shopkeeper SaaS Metrics */}
-            <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 text-xs font-semibold">
-              <div className="p-3.5 bg-purple-50/60 border border-purple-100 rounded-2xl flex justify-between items-center">
+            {/* Shopkeeper SaaS Metrics Cards (2 Column clean layout - QR card removed) */}
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 text-xs font-semibold">
+              <div className="p-4 bg-purple-50/60 border border-purple-100/80 rounded-2xl flex justify-between items-center">
                 <div>
-                  <span className="text-[10px] text-purple-700 font-bold uppercase block">Total Shopkeepers</span>
-                  <span className="text-lg font-black text-purple-900">
-                    {userList.filter(u => ['STAFF', 'MANAGER'].includes(u.role)).length}
+                  <span className="text-[11px] text-purple-700 font-extrabold uppercase tracking-wide block">Total Registered Shops</span>
+                  <span className="text-xl font-black text-purple-900 mt-0.5 block">
+                    {userList.filter(u => ['STAFF', 'MANAGER', 'SHOPKEEPER'].includes(u.role)).length} Shops
                   </span>
                 </div>
-                <Store className="w-6 h-6 text-purple-600 opacity-80" />
+                <div className="w-10 h-10 rounded-xl bg-purple-100 text-purple-700 flex items-center justify-center shrink-0">
+                  <Store className="w-5 h-5" />
+                </div>
               </div>
 
-              <div className="p-3.5 bg-emerald-50/60 border border-emerald-100 rounded-2xl flex justify-between items-center">
+              <div className="p-4 bg-emerald-50/60 border border-emerald-100/80 rounded-2xl flex justify-between items-center">
                 <div>
-                  <span className="text-[10px] text-emerald-700 font-bold uppercase block">Active Counters</span>
-                  <span className="text-lg font-black text-emerald-900">
-                    {userList.filter(u => ['STAFF', 'MANAGER'].includes(u.role) && u.staffStatus !== 'INACTIVE').length}
+                  <span className="text-[11px] text-emerald-700 font-extrabold uppercase tracking-wide block">Active Counters</span>
+                  <span className="text-xl font-black text-emerald-900 mt-0.5 block">
+                    {userList.filter(u => ['STAFF', 'MANAGER', 'SHOPKEEPER'].includes(u.role) && u.staffStatus !== 'INACTIVE').length} Active
                   </span>
                 </div>
-                <Check className="w-6 h-6 text-emerald-600 opacity-80" />
-              </div>
-
-              <div className="p-3.5 bg-cyan-50/60 border border-cyan-100 rounded-2xl flex justify-between items-center">
-                <div>
-                  <span className="text-[10px] text-cyan-700 font-bold uppercase block">Customer Upload Links</span>
-                  <span className="text-lg font-black text-cyan-900">
-                    {userList.filter(u => ['STAFF', 'MANAGER'].includes(u.role)).length} Unique QR Codes
-                  </span>
+                <div className="w-10 h-10 rounded-xl bg-emerald-100 text-emerald-700 flex items-center justify-center shrink-0">
+                  <Check className="w-5 h-5" />
                 </div>
-                <QrCode className="w-6 h-6 text-cyan-600 opacity-80" />
               </div>
             </div>
 
-            {/* Shopkeepers Table */}
+            {/* Shopkeepers Table (Cleaned up - QR & Upload Link column removed) */}
             <div className="overflow-x-auto rounded-2xl border border-slate-200">
-              <table className="w-full text-left border-collapse text-xs min-w-[750px]">
+              <table className="w-full text-left border-collapse text-xs min-w-[700px]">
                 <thead>
                   <tr className="bg-slate-50 text-slate-600 font-extrabold uppercase text-[10px] tracking-wider border-b border-slate-200">
-                    <th className="py-3.5 px-4">Shopkeeper / Store</th>
-                    <th className="py-3.5 px-4">Mobile (Login ID)</th>
-                    <th className="py-3.5 px-4">Customer QR Code & Upload Link</th>
-                    <th className="py-3.5 px-4">Counter Status</th>
-                    <th className="py-3.5 px-4">Registration Date</th>
-                    <th className="py-3.5 px-4 text-right">Actions</th>
+                    <th className="py-4 px-5">SHOP NAME</th>
+                    <th className="py-4 px-5">OWNER NAME</th>
+                    <th className="py-4 px-5">Mobile (Login ID)</th>
+                    <th className="py-4 px-5">Counter Status</th>
+                    <th className="py-4 px-5">Created Date</th>
+                    <th className="py-4 px-5 text-right">Actions</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-slate-100 font-medium text-slate-800">
-                  {userList.filter(u => ['STAFF', 'MANAGER'].includes(u.role)).filter(u => {
+                  {userList.filter(u => ['STAFF', 'MANAGER', 'SHOPKEEPER'].includes(u.role)).filter(u => {
                     const q = userSearchQuery.toLowerCase().trim();
-                    return !q || u.name?.toLowerCase().includes(q) || u.mobile?.includes(q) || u.email?.toLowerCase().includes(q);
+                    return !q || u.shopName?.toLowerCase().includes(q) || u.name?.toLowerCase().includes(q) || u.mobile?.includes(q) || u.email?.toLowerCase().includes(q);
                   }).length === 0 ? (
                     <tr>
-                      <td colSpan={6} className="py-10 text-center text-slate-400 italic">
-                        No registered shopkeepers found. Click "Register Shopkeeper" above to add one.
+                      <td colSpan={6} className="py-12 text-center text-slate-400 italic font-semibold">
+                        No registered shops found. Click "Register Shop" above to add one.
                       </td>
                     </tr>
                   ) : (
                     userList
-                      .filter(u => ['STAFF', 'MANAGER'].includes(u.role))
+                      .filter(u => ['STAFF', 'MANAGER', 'SHOPKEEPER'].includes(u.role))
                       .filter(u => {
                         const q = userSearchQuery.toLowerCase().trim();
-                        return !q || u.name?.toLowerCase().includes(q) || u.mobile?.includes(q) || u.email?.toLowerCase().includes(q);
+                        return !q || u.shopName?.toLowerCase().includes(q) || u.name?.toLowerCase().includes(q) || u.mobile?.includes(q) || u.email?.toLowerCase().includes(q);
                       })
                       .map((u) => {
                         return (
-                          <tr key={u._id} className="hover:bg-slate-50/80 transition-colors">
-                            <td className="py-3.5 px-4">
-                              <div className="flex items-center space-x-2.5">
-                                <div className="w-9 h-9 rounded-xl bg-purple-100 text-purple-700 font-black flex items-center justify-center text-xs shrink-0">
-                                  {u.name.charAt(0)}
+                          <tr key={u._id} className="hover:bg-purple-50/40 transition-colors">
+                            <td className="py-4 px-5">
+                              <div className="flex items-center space-x-3">
+                                <div className="w-10 h-10 rounded-2xl bg-purple-100 text-purple-700 font-black flex items-center justify-center text-xs shrink-0 shadow-xs">
+                                  <Store className="w-5 h-5" />
                                 </div>
                                 <div>
-                                  <p className="font-extrabold text-slate-900 text-xs sm:text-sm">{u.name}</p>
-                                  <span className="text-[10px] font-bold text-slate-400 uppercase">
-                                    {u.role === 'MANAGER' ? 'Shop Manager' : 'Shopkeeper Counter'}
+                                  <p className="font-extrabold text-slate-900 text-xs sm:text-sm">{u.shopName || `${u.name}'s Print Shop`}</p>
+                                  <span className="text-[11px] font-semibold text-slate-400 block mt-0.5">
+                                    {u.shopAddress || u.address || 'Delhi Counter'}
                                   </span>
                                 </div>
                               </div>
                             </td>
 
-                            <td className="py-3.5 px-4 font-mono font-bold text-slate-800">
+                            <td className="py-4 px-5">
+                              <p className="font-extrabold text-slate-900 text-xs">{u.name}</p>
+                              {u.email && <p className="text-[10px] font-semibold text-slate-400 mt-0.5">{u.email}</p>}
+                            </td>
+
+                            <td className="py-4 px-5 font-mono font-bold text-slate-900 text-xs">
                               {u.mobile}
                             </td>
 
-                            <td className="py-3.5 px-4">
+                            <td className="py-4 px-5">
                               <div className="flex items-center space-x-2">
-                                <button
-                                  onClick={() => setSelectedQrShopkeeper(u)}
-                                  className="px-2.5 py-1.5 rounded-lg bg-purple-50 hover:bg-purple-100 text-purple-700 border border-purple-200 flex items-center gap-1 font-bold text-[11px] shadow-xs"
-                                >
-                                  <QrCode className="w-3.5 h-3.5" />
-                                  <span>View QR</span>
-                                </button>
-                                <button
-                                  onClick={() => copyPortalLink(u)}
-                                  className="px-2.5 py-1.5 rounded-lg bg-slate-100 hover:bg-slate-200 text-slate-700 flex items-center gap-1 font-bold text-[11px]"
-                                >
-                                  {copiedShopId === u._id ? (
-                                    <span className="text-emerald-700 font-bold">Copied!</span>
-                                  ) : (
-                                    <>
-                                      <Copy className="w-3.5 h-3.5" />
-                                      <span>Copy Upload Link</span>
-                                    </>
-                                  )}
-                                </button>
-                              </div>
-                            </td>
-
-                            <td className="py-3.5 px-4">
-                              <div className="flex items-center space-x-2">
-                                <span className={`px-2.5 py-1 rounded-full text-[10px] font-extrabold ${
-                                  u.staffStatus === 'INACTIVE' ? 'bg-rose-100 text-rose-800' : 'bg-emerald-100 text-emerald-800'
+                                <span className={`px-3 py-1 rounded-full text-[10px] font-extrabold ${
+                                  u.staffStatus === 'INACTIVE' ? 'bg-rose-100 text-rose-800 border border-rose-200' : 'bg-emerald-100 text-emerald-800 border border-emerald-200'
                                 }`}>
                                   {u.staffStatus === 'INACTIVE' ? 'INACTIVE' : 'ACTIVE COUNTER'}
                                 </span>
                                 {u.staffId && (
                                   <button
                                     onClick={() => handleToggleStaffStatus(u.staffId)}
-                                    className={`p-1 rounded-lg transition-colors ${
+                                    className={`p-1 rounded-lg transition-colors cursor-pointer ${
                                       u.staffStatus === 'ACTIVE'
                                         ? 'bg-amber-50 text-amber-700 hover:bg-amber-100 border border-amber-200'
                                         : 'bg-emerald-50 text-emerald-700 hover:bg-emerald-100 border border-emerald-200'
@@ -705,19 +665,28 @@ export default function SuperAdminConsole() {
                               </div>
                             </td>
 
-                            <td className="py-3.5 px-4 text-slate-500 font-mono text-[11px]">
+                            <td className="py-4 px-5 text-slate-500 font-mono text-[11px] font-semibold">
                               {u.createdAt ? new Date(u.createdAt).toLocaleDateString() : 'Active'}
                             </td>
 
-                            <td className="py-3.5 px-4 text-right">
-                              <button
-                                onClick={() => handleDeleteUser(u._id, u.name)}
-                                disabled={adminUser && adminUser.id === u._id}
-                                className="p-1.5 rounded-lg bg-rose-50 text-rose-600 hover:bg-rose-100 border border-rose-200 transition-all disabled:opacity-30"
-                                title="Delete Shopkeeper Account"
-                              >
-                                <Trash2 className="w-4 h-4" />
-                              </button>
+                            <td className="py-4 px-5 text-right">
+                              <div className="flex items-center justify-end space-x-2">
+                                <button
+                                  onClick={() => setSelectedShopDetail(u)}
+                                  className="px-3 py-1.5 rounded-xl bg-indigo-50 hover:bg-indigo-100 text-indigo-700 border border-indigo-200 font-extrabold text-[11px] transition-all cursor-pointer"
+                                  title="View Shop Profile & Credentials"
+                                >
+                                  Details
+                                </button>
+                                <button
+                                  onClick={() => handleDeleteUser(u._id, u.name)}
+                                  disabled={adminUser && adminUser.id === u._id}
+                                  className="p-1.5 rounded-xl bg-rose-50 text-rose-600 hover:bg-rose-100 border border-rose-200 transition-all cursor-pointer disabled:opacity-30"
+                                  title="Delete Shopkeeper Account"
+                                >
+                                  <Trash2 className="w-4 h-4" />
+                                </button>
+                              </div>
                             </td>
                           </tr>
                         );
@@ -968,70 +937,7 @@ export default function SuperAdminConsole() {
           </div>
         )}
 
-        {/* TAB 3: Printers */}
-        {activeTab === 'printers' && (
-          <div className="bg-white rounded-3xl p-6 border border-slate-200 shadow-sm space-y-4 text-xs font-semibold">
-            <div className="flex justify-between items-center border-b border-slate-100 pb-4">
-              <h3 className="font-extrabold text-base text-slate-900 flex items-center gap-2">
-                <Printer className="w-5 h-5 text-indigo-600" />
-                Hardware Printers Inventory ({printers.length})
-              </h3>
-              <button onClick={() => setIsAddPrinterOpen(true)} className="px-4 py-2 bg-purple-600 text-white font-extrabold text-xs rounded-xl shadow-md">
-                Add Printer
-              </button>
-            </div>
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-              {printers.map((p) => (
-                <div key={p._id} className="p-4 bg-slate-50 rounded-2xl border border-slate-200 space-y-2">
-                  <div className="flex justify-between items-center">
-                    <span className="font-extrabold text-slate-900">{p.name}</span>
-                    <span className="text-[10px] px-2 py-0.5 rounded-full bg-emerald-100 text-emerald-800 font-extrabold">ONLINE</span>
-                  </div>
-                  <p className="text-slate-600">Type: {p.type || 'LASER'}</p>
-                </div>
-              ))}
-            </div>
-          </div>
-        )}
 
-        {/* TAB 4: Settings */}
-        {activeTab === 'settings' && (
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6 text-xs font-semibold">
-            <div className="bg-white rounded-3xl p-6 border border-slate-200 shadow-sm space-y-4">
-              <h3 className="font-extrabold text-base text-slate-900 flex items-center gap-2">
-                <DollarSign className="w-5 h-5 text-emerald-600" />
-                Print Pricing Matrix (per page)
-              </h3>
-              <div className="grid grid-cols-2 gap-3">
-                <div className="bg-slate-50 p-3 rounded-xl border border-slate-200">
-                  <label className="text-slate-600 block mb-1 font-bold">A4 B&W (₹)</label>
-                  <input type="number" value={pricing.A4_BW} onChange={e => setPricing({ ...pricing, A4_BW: Number(e.target.value) })} className="w-full bg-white border border-slate-300 rounded-lg p-2 text-slate-900 font-black" />
-                </div>
-                <div className="bg-slate-50 p-3 rounded-xl border border-slate-200">
-                  <label className="text-slate-600 block mb-1 font-bold">A4 Colour (₹)</label>
-                  <input type="number" value={pricing.A4_COLOUR} onChange={e => setPricing({ ...pricing, A4_COLOUR: Number(e.target.value) })} className="w-full bg-white border border-slate-300 rounded-lg p-2 text-slate-900 font-black" />
-                </div>
-              </div>
-              <button onClick={saveSettings} className="w-full py-3 bg-purple-600 text-white font-extrabold text-xs rounded-xl shadow-md">Save Pricing Matrix</button>
-            </div>
-
-            <div className="bg-white rounded-3xl p-6 border border-slate-200 shadow-sm space-y-4">
-              <h3 className="font-extrabold text-base text-slate-900 flex items-center gap-2">
-                <Clock className="w-5 h-5 text-cyan-600" />
-                Document Auto-Purge Retention
-              </h3>
-              <div className="bg-slate-50 p-4 rounded-xl border border-slate-200 space-y-2">
-                <label className="text-xs font-semibold text-slate-700 block">Retention Duration</label>
-                <select value={retentionMinutes} onChange={e => setRetentionMinutes(Number(e.target.value))} className="w-full bg-white border border-slate-300 rounded-xl p-2.5 text-xs text-slate-900 font-bold">
-                  <option value={30}>30 Minutes after handover</option>
-                  <option value={60}>60 Minutes (1 Hour)</option>
-                  <option value={120}>2 Hours</option>
-                </select>
-              </div>
-              <button onClick={saveSettings} className="w-full py-3 bg-purple-600 text-white font-extrabold text-xs rounded-xl shadow-md">Save Retention Timer</button>
-            </div>
-          </div>
-        )}
 
         {/* TAB 5: Audit Logs */}
         {activeTab === 'logs' && (
@@ -1065,16 +971,19 @@ export default function SuperAdminConsole() {
 
       </div>
 
-      {/* Clean White Register User Modal */}
+      {/* Clean White Register Shop Modal */}
       {isAddUserOpen && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-sm animate-fade-in font-['Plus_Jakarta_Sans',sans-serif]">
           <div className="bg-white text-slate-900 rounded-3xl max-w-md w-full border border-slate-200 shadow-2xl p-6 space-y-4 max-h-[90vh] overflow-y-auto text-xs font-semibold">
             <div className="flex justify-between items-center border-b border-slate-100 pb-3">
-              <div className="flex items-center space-x-2">
-                <div className="w-8 h-8 rounded-xl bg-purple-100 text-purple-700 flex items-center justify-center">
-                  <UserPlus className="w-4 h-4" />
+              <div className="flex items-center space-x-2.5">
+                <div className="w-9 h-9 rounded-2xl bg-purple-100 text-purple-700 flex items-center justify-center font-bold shadow-xs">
+                  <Store className="w-5 h-5" />
                 </div>
-                <h3 className="font-black text-base text-slate-900">Register New Account</h3>
+                <div>
+                  <h3 className="font-black text-base text-slate-900">Register New Shop (Dukan)</h3>
+                  <p className="text-[11px] text-slate-500">Create a shop tenant & assign login credentials</p>
+                </div>
               </div>
               <button onClick={() => setIsAddUserOpen(false)} className="w-7 h-7 rounded-full bg-slate-100 hover:bg-slate-200 text-slate-500 flex items-center justify-center">
                 <X className="w-4 h-4" />
@@ -1082,28 +991,111 @@ export default function SuperAdminConsole() {
             </div>
 
             <form onSubmit={handleCreateUser} className="space-y-3">
+              {newUser.role !== 'ADMIN' ? (
+                <>
+                  <div>
+                    <label className="font-bold text-slate-700 block mb-1">Shop / Dukan Name</label>
+                    <input
+                      type="text"
+                      required
+                      placeholder="e.g. Apex Print Shop & Copy Center"
+                      value={newUser.shopName}
+                      onChange={e => setNewUser({ ...newUser, shopName: e.target.value })}
+                      className="w-full bg-slate-50 border border-slate-300 rounded-xl p-2.5 text-slate-900 font-bold focus:outline-none focus:border-purple-600"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="font-bold text-slate-700 block mb-1">Shopkeeper / Owner Name</label>
+                    <input
+                      type="text"
+                      required
+                      placeholder="Primary Shop Contact Person"
+                      value={newUser.name}
+                      onChange={e => setNewUser({ ...newUser, name: e.target.value })}
+                      className="w-full bg-slate-50 border border-slate-300 rounded-xl p-2.5 text-slate-900 font-semibold focus:outline-none focus:border-purple-600"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="font-bold text-slate-700 block mb-1">Shop Full Address</label>
+                    <input
+                      type="text"
+                      required
+                      placeholder="Shop No., Market, City"
+                      value={newUser.address || ''}
+                      onChange={e => setNewUser({ ...newUser, address: e.target.value })}
+                      className="w-full bg-slate-50 border border-slate-300 rounded-xl p-2.5 text-slate-900 font-medium focus:outline-none focus:border-purple-600"
+                    />
+                  </div>
+                </>
+              ) : (
+                <div>
+                  <label className="font-bold text-slate-700 block mb-1">Admin Full Name</label>
+                  <input
+                    type="text"
+                    required
+                    placeholder="Admin Full Name"
+                    value={newUser.name}
+                    onChange={e => setNewUser({ ...newUser, name: e.target.value })}
+                    className="w-full bg-slate-50 border border-slate-300 rounded-xl p-2.5 text-slate-900 font-semibold focus:outline-none focus:border-purple-600"
+                  />
+                </div>
+              )}
+
+              <div>
+                <label className="font-bold text-slate-700 block mb-1">Mobile Number (10 Digits Login ID)</label>
+                <input
+                  type="tel"
+                  required
+                  maxLength={10}
+                  placeholder="10-digit mobile number"
+                  value={newUser.mobile}
+                  onChange={e => setNewUser({ ...newUser, mobile: e.target.value.replace(/\D/g, '') })}
+                  className="w-full bg-slate-50 border border-slate-300 rounded-xl p-2.5 text-slate-900 font-mono focus:outline-none focus:border-purple-600"
+                />
+              </div>
+
+              <div>
+                <label className="font-bold text-slate-700 block mb-1">Email ID (Optional)</label>
+                <input
+                  type="email"
+                  placeholder="shop@domain.com"
+                  value={newUser.email || ''}
+                  onChange={e => setNewUser({ ...newUser, email: e.target.value })}
+                  className="w-full bg-slate-50 border border-slate-300 rounded-xl p-2.5 text-slate-900 font-semibold focus:outline-none focus:border-purple-600"
+                />
+              </div>
+
               <div>
                 <label className="font-bold text-slate-700 block mb-1">Account Role</label>
-                <select value={newUser.role} onChange={e => setNewUser({ ...newUser, role: e.target.value })} className="w-full bg-slate-50 border border-slate-300 rounded-xl p-2.5 text-purple-900 font-extrabold">
-                  <option value="STAFF">SHOPKEEPER</option>
-                  <option value="ADMIN">SUPER ADMIN</option>
+                <select
+                  value={newUser.role}
+                  onChange={e => setNewUser({ ...newUser, role: e.target.value })}
+                  className="w-full bg-slate-50 border border-slate-300 rounded-xl p-2.5 text-purple-900 font-extrabold focus:outline-none focus:border-purple-600"
+                >
+                  <option value="STAFF">REGISTER SHOP (DUKAN OWNER)</option>
+                  <option value="ADMIN">REGISTER SUPER ADMIN</option>
                 </select>
               </div>
+
               <div>
-                <label className="font-bold text-slate-700 block mb-1">Full Name</label>
-                <input type="text" required placeholder="Full Name" value={newUser.name} onChange={e => setNewUser({ ...newUser, name: e.target.value })} className="w-full bg-slate-50 border border-slate-300 rounded-xl p-2.5 text-slate-900 font-semibold" />
+                <label className="font-bold text-slate-700 block mb-1">Login Password</label>
+                <input
+                  type="password"
+                  required
+                  placeholder="Enter login password"
+                  value={newUser.password}
+                  onChange={e => setNewUser({ ...newUser, password: e.target.value })}
+                  className="w-full bg-slate-50 border border-slate-300 rounded-xl p-2.5 text-slate-900 font-semibold focus:outline-none focus:border-purple-600"
+                />
               </div>
-              <div>
-                <label className="font-bold text-slate-700 block mb-1">Mobile Number (Login ID)</label>
-                <input type="tel" required placeholder="Mobile Number" value={newUser.mobile} onChange={e => setNewUser({ ...newUser, mobile: e.target.value })} className="w-full bg-slate-50 border border-slate-300 rounded-xl p-2.5 text-slate-900 font-mono" />
-              </div>
-              <div>
-                <label className="font-bold text-slate-700 block mb-1">Password</label>
-                <input type="password" required placeholder="Password" value={newUser.password} onChange={e => setNewUser({ ...newUser, password: e.target.value })} className="w-full bg-slate-50 border border-slate-300 rounded-xl p-2.5 text-slate-900" />
-              </div>
+
               <div className="flex justify-end space-x-2 pt-2">
                 <button type="button" onClick={() => setIsAddUserOpen(false)} className="px-4 py-2 text-slate-600 font-bold hover:bg-slate-100 rounded-xl">Cancel</button>
-                <button type="submit" disabled={loading} className="px-5 py-2.5 bg-purple-600 text-white font-extrabold rounded-xl shadow-md">Register Account</button>
+                <button type="submit" disabled={loading} className="px-5 py-2.5 bg-purple-600 hover:bg-purple-500 text-white font-extrabold rounded-xl shadow-md uppercase tracking-wider cursor-pointer">
+                  {loading ? 'Processing...' : (newUser.role === 'ADMIN' ? '+ REGISTER ADMIN' : '+ REGISTER SHOP')}
+                </button>
               </div>
             </form>
           </div>
@@ -1118,13 +1110,63 @@ export default function SuperAdminConsole() {
               <span className="font-bold text-purple-700 uppercase">Customer Portal QR</span>
               <button onClick={() => setSelectedQrShopkeeper(null)} className="w-7 h-7 rounded-full bg-slate-100 hover:bg-slate-200 text-slate-500 flex items-center justify-center"><X className="w-4 h-4" /></button>
             </div>
-            <h3 className="font-extrabold text-lg text-slate-900">{selectedQrShopkeeper.name}</h3>
+            <h3 className="font-extrabold text-lg text-slate-900">{selectedQrShopkeeper.shopName || selectedQrShopkeeper.name}</h3>
             <div className="bg-slate-50 p-5 rounded-2xl border border-slate-200 flex justify-center">
               <QRCodeSVG value={getShopkeeperPortalLink(selectedQrShopkeeper)} size={180} level="H" />
             </div>
             <button onClick={() => copyPortalLink(selectedQrShopkeeper)} className="w-full py-2.5 bg-purple-600 text-white font-extrabold text-xs rounded-xl shadow-xs">
               {copiedShopId === selectedQrShopkeeper._id ? 'Copied to Clipboard!' : 'Copy Portal Link'}
             </button>
+          </div>
+        </div>
+      )}
+
+      {/* View Shop Full Details Modal */}
+      {selectedShopDetail && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-sm animate-fade-in font-['Plus_Jakarta_Sans',sans-serif]">
+          <div className="bg-white text-slate-900 rounded-3xl max-w-md w-full border border-slate-200 shadow-2xl p-6 space-y-4 text-xs font-semibold">
+            <div className="flex justify-between items-center border-b border-slate-100 pb-3">
+              <div className="flex items-center space-x-2">
+                <Store className="w-5 h-5 text-purple-600" />
+                <span className="font-extrabold text-base text-slate-900">Shop Full Profile & Credentials</span>
+              </div>
+              <button onClick={() => setSelectedShopDetail(null)} className="w-7 h-7 rounded-full bg-slate-100 hover:bg-slate-200 text-slate-500 flex items-center justify-center"><X className="w-4 h-4" /></button>
+            </div>
+
+            <div className="space-y-3">
+              <div className="p-4 bg-purple-50/70 border border-purple-100 rounded-2xl space-y-1">
+                <span className="text-[10px] font-bold text-purple-700 uppercase block">Shop / Dukan Name</span>
+                <p className="text-base font-black text-purple-950">{selectedShopDetail.shopName || `${selectedShopDetail.name}'s Print Shop`}</p>
+                <p className="text-xs text-slate-600 font-bold">{selectedShopDetail.shopAddress || selectedShopDetail.address || 'Delhi Counter'}</p>
+              </div>
+
+              <div className="grid grid-cols-2 gap-3 text-xs">
+                <div className="p-3 bg-slate-50 rounded-xl border border-slate-200">
+                  <span className="text-[10px] text-slate-400 font-bold uppercase block">Owner / Contact</span>
+                  <p className="font-extrabold text-slate-800">{selectedShopDetail.name}</p>
+                </div>
+                <div className="p-3 bg-slate-50 rounded-xl border border-slate-200">
+                  <span className="text-[10px] text-slate-400 font-bold uppercase block">Login Mobile</span>
+                  <p className="font-mono font-bold text-slate-900">{selectedShopDetail.mobile}</p>
+                </div>
+              </div>
+
+              <div className="p-3 bg-slate-50 rounded-xl border border-slate-200">
+                <span className="text-[10px] text-slate-400 font-bold uppercase block">Email Address</span>
+                <p className="font-semibold text-slate-700">{selectedShopDetail.email || 'N/A'}</p>
+              </div>
+
+              <div className="p-3 bg-slate-50 rounded-xl border border-slate-200 space-y-1">
+                <span className="text-[10px] text-slate-400 font-bold uppercase block">Customer Upload URL</span>
+                <p className="font-mono text-[11px] text-cyan-700 break-all font-bold">{getShopkeeperPortalLink(selectedShopDetail)}</p>
+              </div>
+            </div>
+
+            <div className="flex justify-end pt-2">
+              <button onClick={() => setSelectedShopDetail(null)} className="w-full py-2.5 bg-purple-600 hover:bg-purple-500 text-white font-extrabold text-xs rounded-xl shadow-xs cursor-pointer">
+                Close Profile
+              </button>
+            </div>
           </div>
         </div>
       )}

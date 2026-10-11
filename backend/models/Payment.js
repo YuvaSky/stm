@@ -5,7 +5,8 @@ const paymentSchema = new mongoose.Schema({
   amount: { type: Number, required: true },
   method: { type: String, enum: ['CASH', 'UPI', 'ONLINE'], default: 'UPI' },
   status: { type: String, enum: ['PENDING', 'PAID', 'FAILED', 'REFUNDED'], default: 'PENDING' },
-  transactionReference: { type: String, required: true }
+  transactionReference: { type: String, required: true },
+  upiUtr: { type: String, default: '' }
 }, { timestamps: true });
 
 paymentSchema.index({ orderId: 1 });

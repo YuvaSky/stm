@@ -9,7 +9,169 @@ const AuditLog = require('../models/AuditLog');
 const User = require('../models/User');
 const Staff = require('../models/Staff');
 
-router.use(protect, authorize('ADMIN', 'MANAGER', 'DEVELOPER', 'SHOPKEEPER'));
+router.use(protect, authorize('ADMIN', 'MANAGER', 'DEVELOPER'));
+
+// Get all registered Shops (Admin Only)
+router.get('/shops', async (req, res) => {
+  try {
+    const shops = await Shop.find().sort({ createdAt: -1 }).lean();
+    const branches = await Branch.find().lean();
+    const staff = await Staff.find().populate('userId', 'name mobile email').lean();
+
+    const enrichedShops = shops.map(s => {
+      const shopBranches = branches.filter(b => b.shopId?.toString() === s._id.toString());
+      const shopStaff = staff.filter(st => st.shopId?.toString() === s._id.toString());
+      return {
+        ...s,
+        branches: shopBranches,
+        staff: shopStaff
+      };
+    });
+
+    res.json({ success: true, shops: enrichedShops });
+  } catch (err) {
+    res.status(500).json({ success: false, message: err.message });
+  }
+});
+
+// Register New Shop (Admin Only - Only Admins have access to add shops)
+router.post('/shops', async (req, res) => {
+  try {
+    const {
+      shopName,
+      ownerName,
+      name,
+      mobile,
+      phone,
+      email,
+      address,
+      password,
+      pricing,
+      upiId,
+      retentionMinutes
+    } = req.body;
+
+    const contactPhone = String(mobile || phone || '').replace(/\D/g, '').trim();
+    const finalShopName = (shopName || '').trim();
+    const finalOwnerName = (ownerName || name || '').trim();
+    const finalAddress = (address || '').trim();
+    const finalPassword = String(password || '').trim();
+
+    if (!finalShopName || !finalOwnerName || !contactPhone || !finalPassword || !finalAddress) {
+      return res.status(400).json({
+        success: false,
+        message: 'Shop Name, Owner Name, Mobile Number, Password, and Shop Address are required.'
+      });
+    }
+
+    if (contactPhone.length !== 10) {
+      return res.status(400).json({
+        success: false,
+        message: 'Please enter a valid 10-digit mobile number.'
+      });
+    }
+
+    if (finalPassword.length < 6) {
+      return res.status(400).json({
+        success: false,
+        message: 'Password must be at least 6 characters long.'
+      });
+    }
+
+    const existingShop = await Shop.findOne({ phone: contactPhone });
+    if (existingShop) {
+      return res.status(400).json({
+        success: false,
+        message: `A shop with mobile ${contactPhone} already exists (${existingShop.name}).`
+      });
+    }
+
+    const salt = await bcrypt.genSalt(10);
+    const passwordHash = await bcrypt.hash(finalPassword, salt);
+
+    const baseSlug = finalShopName.toLowerCase().replace(/[^a-z0-9]/g, '-').replace(/-+/g, '-').replace(/^-|-$/g, '') || 'shop';
+    const uniqueSuffix = Date.now().toString(36).slice(-4) + Math.random().toString(36).substring(2, 5);
+    const slug = `${baseSlug}-${contactPhone.slice(-4)}-${uniqueSuffix}`;
+
+    const newShop = await Shop.create({
+      name: finalShopName,
+      slug,
+      ownerName: finalOwnerName,
+      phone: contactPhone,
+      email: (email || '').trim().toLowerCase(),
+      address: finalAddress,
+      passwordHash,
+      role: 'SHOPKEEPER',
+      subscriptionStatus: 'ACTIVE',
+      subscriptionPlan: 'PRO',
+      settings: {
+        retentionMinutes: Number(retentionMinutes) || 60,
+        autoPrint: true,
+        preferredPrinter: 'AUTO',
+        pricing: {
+          A4_BW: Number(pricing?.A4_BW) >= 0 ? Number(pricing.A4_BW) : 2,
+          A4_COLOUR: Number(pricing?.A4_COLOUR) >= 0 ? Number(pricing.A4_COLOUR) : 10,
+          A3_BW: Number(pricing?.A3_BW) >= 0 ? Number(pricing.A3_BW) : 5,
+          A3_COLOUR: Number(pricing?.A3_COLOUR) >= 0 ? Number(pricing.A3_COLOUR) : 20,
+          doubleSidedMultiplier: Number(pricing?.doubleSidedMultiplier) || 1.8
+        },
+        paymentGateway: {
+          upiId: (upiId || '').trim()
+        }
+      }
+    });
+
+    const branch = await Branch.create({
+      shopId: newShop._id,
+      name: `${finalShopName} - Main Counter`,
+      address: finalAddress,
+      code: `BR-${contactPhone.slice(-4)}`,
+      status: 'ACTIVE'
+    });
+
+    let user = await User.findOne({ mobile: contactPhone });
+    if (!user) {
+      user = await User.create({
+        name: finalOwnerName,
+        mobile: contactPhone,
+        email: (email || '').trim().toLowerCase(),
+        passwordHash,
+        role: 'STAFF'
+      });
+    } else {
+      user.name = finalOwnerName;
+      user.role = 'STAFF';
+      user.passwordHash = passwordHash;
+      await user.save();
+    }
+
+    const staff = await Staff.create({
+      userId: user._id,
+      shopId: newShop._id,
+      branchId: branch._id,
+      role: 'STAFF',
+      status: 'ACTIVE'
+    });
+
+    await AuditLog.create({
+      userId: req.user._id,
+      action: 'NEW_SHOP_CREATED',
+      metadata: { shopName: newShop.name, ownerName: newShop.ownerName, mobile: contactPhone }
+    });
+
+    res.status(201).json({
+      success: true,
+      message: `✅ Shop '${newShop.name}' registered successfully!`,
+      shop: newShop,
+      branch,
+      staff,
+      user
+    });
+  } catch (err) {
+    console.error('[Admin Register Shop Error]:', err);
+    res.status(500).json({ success: false, message: err.message });
+  }
+});
 
 // Get all Users (Customers, Shopkeepers, Admins) with role filter
 router.get('/users', async (req, res) => {
@@ -26,8 +188,8 @@ router.get('/users', async (req, res) => {
 
     const users = await User.find(query).sort({ createdAt: -1 }).lean();
 
-    // Map associated Staff data if applicable
-    const staffMembers = await Staff.find().lean();
+    // Map associated Staff data and Shop info if applicable
+    const staffMembers = await Staff.find().populate('shopId').populate('branchId').lean();
     const staffMap = {};
     staffMembers.forEach(s => {
       if (s.userId) staffMap[s.userId.toString()] = s;
@@ -39,7 +201,10 @@ router.get('/users', async (req, res) => {
         ...u,
         staffId: staffInfo ? staffInfo._id : null,
         staffStatus: staffInfo ? staffInfo.status : 'ACTIVE',
-        branchId: staffInfo ? staffInfo.branchId : null
+        branchId: staffInfo ? staffInfo.branchId?._id : null,
+        shopId: staffInfo ? staffInfo.shopId?._id : null,
+        shopName: staffInfo?.shopId?.name || (u.role === 'SHOPKEEPER' || u.role === 'STAFF' ? `${u.name}'s Print Shop` : undefined),
+        shopAddress: staffInfo?.shopId?.address || staffInfo?.branchId?.address || undefined
       };
     });
 
@@ -52,7 +217,7 @@ router.get('/users', async (req, res) => {
 // Create New Account (Customer, Shopkeeper/Staff, Admin/Manager)
 router.post('/users', async (req, res) => {
   try {
-    const { name, mobile, email, password, role } = req.body;
+    const { name, mobile, email, password, role, shopName, address } = req.body;
 
     if (!name || !mobile || !password) {
       return res.status(400).json({ success: false, message: 'Name, mobile and password are required' });
@@ -66,7 +231,7 @@ router.post('/users', async (req, res) => {
     const salt = await bcrypt.genSalt(10);
     const passwordHash = await bcrypt.hash(password, salt);
 
-    const userRole = ['CUSTOMER', 'STAFF', 'MANAGER', 'ADMIN'].includes(role) ? role : 'CUSTOMER';
+    const userRole = ['CUSTOMER', 'STAFF', 'MANAGER', 'ADMIN', 'SHOPKEEPER'].includes(role) ? role : 'CUSTOMER';
 
     const newUser = await User.create({
       name,
@@ -77,22 +242,47 @@ router.post('/users', async (req, res) => {
     });
 
     let staffRecord = null;
-    if (['STAFF', 'MANAGER', 'ADMIN'].includes(userRole)) {
-      let shop = await Shop.findOne();
-      let branch = await Branch.findOne();
-
-      if (!shop) {
-        shop = await Shop.create({ name: 'Main Shop', address: 'Main Street', phone: mobile });
+    let shopRecord = null;
+    if (['STAFF', 'MANAGER', 'ADMIN', 'SHOPKEEPER'].includes(userRole)) {
+      if (shopName) {
+        const cleanShopName = shopName.trim();
+        const baseSlug = cleanShopName.toLowerCase().replace(/[^a-z0-9]/g, '-').replace(/-+/g, '-').replace(/^-|-$/g, '') || 'shop';
+        const uniqueSuffix = Date.now().toString(36).slice(-4) + Math.random().toString(36).substring(2, 5);
+        const slug = `${baseSlug}-${mobile.slice(-4)}-${uniqueSuffix}`;
+        shopRecord = await Shop.create({
+          name: cleanShopName,
+          slug,
+          ownerName: name.trim(),
+          phone: mobile,
+          email: (email || '').trim().toLowerCase(),
+          address: (address || 'Counter Address').trim(),
+          passwordHash,
+          role: 'SHOPKEEPER',
+          subscriptionStatus: 'ACTIVE',
+          subscriptionPlan: 'PRO'
+        });
+      } else {
+        shopRecord = await Shop.findOne();
+        if (!shopRecord) {
+          shopRecord = await Shop.create({ name: 'Main Shop', address: address || 'Main Street', phone: mobile });
+        }
       }
+
+      let branch = await Branch.findOne({ shopId: shopRecord._id });
       if (!branch) {
-        branch = await Branch.create({ shopId: shop._id, name: 'Main Branch', code: 'BR-01' });
+        branch = await Branch.create({
+          shopId: shopRecord._id,
+          name: `${shopRecord.name} - Main Counter`,
+          address: shopRecord.address || 'Main Branch',
+          code: `BR-${mobile.slice(-4)}`
+        });
       }
 
       staffRecord = await Staff.create({
         userId: newUser._id,
-        shopId: shop._id,
+        shopId: shopRecord._id,
         branchId: branch._id,
-        role: userRole === 'ADMIN' ? 'MANAGER' : userRole,
+        role: userRole === 'ADMIN' ? 'MANAGER' : (userRole === 'STAFF' ? 'STAFF' : 'SHOPKEEPER'),
         status: 'ACTIVE'
       });
     }
@@ -114,7 +304,9 @@ router.post('/users', async (req, res) => {
         role: newUser.role,
         createdAt: newUser.createdAt,
         staffId: staffRecord ? staffRecord._id : null,
-        staffStatus: staffRecord ? staffRecord.status : 'ACTIVE'
+        staffStatus: staffRecord ? staffRecord.status : 'ACTIVE',
+        shopName: shopRecord ? shopRecord.name : undefined,
+        shopId: shopRecord ? shopRecord._id : null
       }
     });
   } catch (err) {

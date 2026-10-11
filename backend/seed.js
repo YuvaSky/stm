@@ -9,12 +9,15 @@ const Branch = require('./models/Branch');
 const Staff = require('./models/Staff');
 const Printer = require('./models/Printer');
 
-const seedDB = async () => {
-  try {
-    const mongoUri = process.env.MONGODB_URI || 'mongodb://127.0.0.1:27017/secure_print_shop';
-    await mongoose.connect(mongoUri);
-    console.log('[Seeder]: Connected to MongoDB ->', mongoUri);
+const seedData = async (forceClean = false) => {
+  if (!forceClean) {
+    const existingShop = await Shop.findOne({});
+    if (existingShop) {
+      return;
+    }
+  }
 
+  try {
     // Clear existing collections if desired
     await User.deleteMany({});
     await Shop.deleteMany({});
@@ -22,7 +25,7 @@ const seedDB = async () => {
     await Staff.deleteMany({});
     await Printer.deleteMany({});
 
-    console.log('[Seeder]: Cleared old development records.');
+    console.log('[Seeder]: Initializing default shop records...');
 
     // Create Default Shop
     const shop = await Shop.create({
@@ -118,7 +121,18 @@ const seedDB = async () => {
     console.log('2) Staff User: Mobile: 8888888888 | Password: admin123');
     console.log('3) Customer:   Mobile: 9876543210 | Password: user123');
     console.log('---------------------------------------------------------');
+  } catch (err) {
+    console.error('[Seeder Error]:', err.message);
+    throw err;
+  }
+};
 
+const seedDB = async () => {
+  try {
+    const mongoUri = process.env.MONGODB_URI || 'mongodb://127.0.0.1:27017/secure_print_shop';
+    await mongoose.connect(mongoUri);
+    console.log('[Seeder]: Connected to MongoDB ->', mongoUri);
+    await seedData(true);
     process.exit(0);
   } catch (err) {
     console.error('[Seeder Error]:', err.message);
@@ -126,4 +140,8 @@ const seedDB = async () => {
   }
 };
 
-seedDB();
+if (require.main === module) {
+  seedDB();
+}
+
+module.exports = { seedData, seedDB };

@@ -99,20 +99,6 @@ export default function Footer({ currentView, setCurrentView }) {
                 <FileText className="w-3.5 h-3.5 text-slate-400" />
                 Pricing Rates
               </button>
-
-              <span className="text-slate-300">|</span>
-
-              {/* Staff / Shopkeeper portal link */}
-              <button
-                onClick={() => {
-                  setCurrentView('shopkeeper');
-                  window.scrollTo({ top: 0, behavior: 'smooth' });
-                }}
-                className="hover:text-blue-700 transition-colors flex items-center gap-1 text-slate-500 hover:text-slate-800"
-              >
-                <Store className="w-3.5 h-3.5 text-slate-400" />
-                <span>Shopkeeper Portal</span>
-              </button>
             </div>
 
           </div>

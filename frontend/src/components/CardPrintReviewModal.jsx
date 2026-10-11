@@ -28,6 +28,7 @@ export default function CardPrintReviewModal({
   // Thumbnail editing active selection
   const [activeSide, setActiveSide] = useState('FRONT'); // FRONT | BACK
   const [rotations, setRotations] = useState({ front: 0, back: 0 });
+  const [mobileActiveTab, setMobileActiveTab] = useState('settings'); // 'settings' | 'preview'
 
   const frontInputRef = useRef(null);
   const backInputRef = useRef(null);
@@ -311,11 +312,41 @@ export default function CardPrintReviewModal({
           </button>
         </div>
 
+        {/* Mobile Tab Bar (Visible on mobile only) */}
+        <div className="md:hidden flex bg-slate-100 p-1 border-b border-slate-200 text-xs font-bold shrink-0">
+          <button
+            type="button"
+            onClick={() => setMobileActiveTab('settings')}
+            className={`flex-1 py-2 rounded-xl flex items-center justify-center gap-1.5 transition-all ${
+              mobileActiveTab === 'settings'
+                ? 'bg-white text-cyan-800 shadow-xs font-extrabold'
+                : 'text-slate-500 hover:text-slate-800'
+            }`}
+          >
+            <Sliders className="w-3.5 h-3.5" />
+            <span>1. Print Settings</span>
+          </button>
+          <button
+            type="button"
+            onClick={() => setMobileActiveTab('preview')}
+            className={`flex-1 py-2 rounded-xl flex items-center justify-center gap-1.5 transition-all ${
+              mobileActiveTab === 'preview'
+                ? 'bg-cyan-600 text-white shadow-xs font-extrabold'
+                : 'text-slate-500 hover:text-slate-800'
+            }`}
+          >
+            <FileText className="w-3.5 h-3.5" />
+            <span>2. Sheet Preview</span>
+          </button>
+        </div>
+
         {/* Main Body */}
         <div className="flex-1 overflow-hidden grid grid-cols-1 md:grid-cols-12 gap-0 min-h-0">
           
           {/* Left Controls & Settings Panel (5 Columns) */}
-          <div className="md:col-span-5 p-4 sm:p-5 bg-slate-50 border-r border-slate-200 space-y-4 overflow-y-auto max-h-full">
+          <div className={`md:col-span-5 p-3.5 sm:p-5 bg-slate-50 border-r border-slate-200 space-y-4 overflow-y-auto max-h-full ${
+            mobileActiveTab === 'settings' ? 'block' : 'hidden md:block'
+          }`}>
             
             {/* Dynamic Source Images Thumbnails (Renders all uploaded images, 1, 2, or N) */}
             <div className="space-y-2">
@@ -581,10 +612,24 @@ export default function CardPrintReviewModal({
               />
             </div>
 
+            {/* Mobile Switch to Preview Button */}
+            <div className="md:hidden pt-2">
+              <button
+                type="button"
+                onClick={() => setMobileActiveTab('preview')}
+                className="w-full py-3 bg-gradient-to-r from-cyan-600 to-blue-600 hover:from-cyan-500 hover:to-blue-500 text-white font-extrabold text-xs rounded-xl shadow-md flex items-center justify-center gap-2 transition-all cursor-pointer"
+              >
+                <FileText className="w-4 h-4" />
+                <span>Next: View Realistic Sheet Preview →</span>
+              </button>
+            </div>
+
           </div>
 
           {/* Right Realistic A4 Paper Preview Canvas (7 Columns) */}
-          <div className="md:col-span-7 bg-slate-100 p-3 sm:p-4 flex flex-col items-center justify-between relative overflow-hidden h-full">
+          <div className={`md:col-span-7 bg-slate-100 p-2.5 sm:p-4 flex flex-col items-center justify-between relative overflow-hidden h-full ${
+            mobileActiveTab === 'preview' ? 'flex' : 'hidden md:flex'
+          }`}>
             
             {/* Canvas Header Bar */}
             <div className="w-full flex items-center justify-between text-xs font-bold text-slate-600 mb-1.5 shrink-0">

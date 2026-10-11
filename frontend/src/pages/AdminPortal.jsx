@@ -36,7 +36,8 @@ export default function AdminPortal({ setCurrentView }) {
     email: '',
     password: '',
     role: 'STAFF',
-    shopName: ''
+    shopName: '',
+    address: ''
   });
 
   // Printer Creation Modal
@@ -58,7 +59,7 @@ export default function AdminPortal({ setCurrentView }) {
   const [retentionMinutes, setRetentionMinutes] = useState(60);
 
   useEffect(() => {
-    if (!user || !['ADMIN', 'MANAGER'].includes(user.role)) {
+    if (!user || !['ADMIN', 'MANAGER', 'DEVELOPER'].includes(user.role)) {
       setUnauthorized(true);
     } else {
       setUnauthorized(false);
@@ -170,14 +171,19 @@ export default function AdminPortal({ setCurrentView }) {
       return;
     }
 
+    if (newUser.role === 'STAFF' && !newUser.shopName) {
+      alert('Please provide the Shop / Store Name');
+      return;
+    }
+
     setLoading(true);
     try {
       const res = await axios.post('/api/admin/users', newUser);
       if (res.data.success) {
-        const roleLabel = newUser.role === 'STAFF' ? 'Shopkeeper' : newUser.role === 'ADMIN' ? 'Admin' : 'Customer User';
-        setSaveSuccess(`✅ ${roleLabel} '${newUser.name}' registered successfully!`);
+        const roleLabel = newUser.role === 'STAFF' ? 'Shop' : newUser.role === 'ADMIN' ? 'Admin' : 'Customer User';
+        setSaveSuccess(`✅ ${roleLabel} '${newUser.name}' (${newUser.shopName || newUser.role}) registered successfully!`);
         setIsAddUserOpen(false);
-        setNewUser({ name: '', mobile: '', email: '', password: '', role: 'STAFF', shopName: '' });
+        setNewUser({ name: '', mobile: '', email: '', password: '', role: 'STAFF', shopName: '', address: '' });
         fetchUsers();
         fetchStaff();
         fetchAnalytics();
@@ -352,17 +358,6 @@ export default function AdminPortal({ setCurrentView }) {
               Sign In To Admin Portal
             </button>
           </form>
-
-          <div className="pt-2 text-center border-t border-slate-800">
-            <button
-              type="button"
-              onClick={() => setCurrentView && setCurrentView('customer')}
-              className="text-xs font-semibold text-slate-400 hover:text-white transition-colors inline-flex items-center gap-1.5"
-            >
-              <ArrowLeft className="w-4 h-4" />
-              Return to Customer Express App
-            </button>
-          </div>
         </div>
       </div>
     );
@@ -388,14 +383,28 @@ export default function AdminPortal({ setCurrentView }) {
           </div>
         </div>
 
-        <div className="flex items-center space-x-3">
+        <div className="flex items-center space-x-2">
           <button
-            onClick={() => setIsAddUserOpen(true)}
-            className="px-4 py-2 rounded-xl bg-purple-600 hover:bg-purple-500 text-white font-extrabold text-xs shadow-md flex items-center gap-1.5 transition-all"
+            onClick={() => {
+              setNewUser({ name: '', mobile: '', email: '', password: '', role: 'STAFF', shopName: '', address: '' });
+              setIsAddUserOpen(true);
+            }}
+            className="px-3.5 py-2 rounded-xl bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-500 hover:to-indigo-500 text-white font-black text-xs shadow-md flex items-center gap-1.5 transition-all cursor-pointer"
           >
-            <UserPlus className="w-4 h-4" />
-            <span className="hidden sm:inline">Register Account</span>
-            <span className="sm:hidden">Register</span>
+            <Store className="w-4 h-4 text-purple-200" />
+            <span className="hidden sm:inline">+ Add Print Shop</span>
+            <span className="sm:hidden">+ Shop</span>
+          </button>
+
+          <button
+            onClick={() => {
+              setNewUser({ name: '', mobile: '', email: '', password: '', role: 'CUSTOMER', shopName: '', address: '' });
+              setIsAddUserOpen(true);
+            }}
+            className="px-3 py-2 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-200 font-bold text-xs border border-slate-700 flex items-center gap-1.5 transition-all cursor-pointer"
+          >
+            <UserPlus className="w-4 h-4 text-slate-400" />
+            <span className="hidden sm:inline">Add User</span>
           </button>
 
           <div className="h-6 w-px bg-slate-800 hidden sm:block" />
@@ -1016,14 +1025,46 @@ export default function AdminPortal({ setCurrentView }) {
                   onChange={(e) => setNewUser({ ...newUser, role: e.target.value })}
                   className="w-full bg-slate-950 border border-slate-700 rounded-xl p-2.5 text-purple-300 font-extrabold focus:outline-none focus:border-purple-500"
                 >
-                  <option value="STAFF">SHOPKEEPER / COUNTER STAFF (Receives Queue & QR)</option>
+                  <option value="STAFF">SHOPKEEPER / PRINT SHOP (Registers New Shop & Counter)</option>
                   <option value="CUSTOMER">CUSTOMER (Standard User App)</option>
                   <option value="ADMIN">SUPER ADMIN / MANAGER (Full System Settings)</option>
                 </select>
               </div>
 
+              {newUser.role === 'STAFF' && (
+                <>
+                  <div>
+                    <label className="font-bold text-slate-300 block mb-1">
+                      Shop / Store Name <span className="text-purple-400">*</span>
+                    </label>
+                    <input
+                      type="text"
+                      required
+                      placeholder="e.g. Apex Print & Xerox Hub"
+                      value={newUser.shopName}
+                      onChange={(e) => setNewUser({ ...newUser, shopName: e.target.value })}
+                      className="w-full bg-slate-950 border border-slate-700 rounded-xl p-2.5 text-white font-bold focus:outline-none focus:border-purple-500"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="font-bold text-slate-300 block mb-1">
+                      Shop Counter Address <span className="text-purple-400">*</span>
+                    </label>
+                    <input
+                      type="text"
+                      required
+                      placeholder="e.g. Shop 12, Main Market, Station Road"
+                      value={newUser.address}
+                      onChange={(e) => setNewUser({ ...newUser, address: e.target.value })}
+                      className="w-full bg-slate-950 border border-slate-700 rounded-xl p-2.5 text-white font-medium focus:outline-none focus:border-purple-500"
+                    />
+                  </div>
+                </>
+              )}
+
               <div>
-                <label className="font-bold text-slate-300 block mb-1">Full Name</label>
+                <label className="font-bold text-slate-300 block mb-1">{newUser.role === 'STAFF' ? 'Owner / Shopkeeper Name' : 'Full Name'}</label>
                 <input
                   type="text"
                   required

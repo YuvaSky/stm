@@ -26,9 +26,21 @@ const orderSchema = new mongoose.Schema({
   },
   totalAmount: { type: Number, required: true, default: 0 },
   paymentStatus: { type: String, enum: ['PENDING', 'PAID', 'FAILED', 'REFUNDED'], default: 'PENDING' },
+  paymentMethod: { type: String, default: 'UPI' },
+  upiUtr: { type: String, default: '' },
   qrTokenHash: { type: String, required: true },
   pickupPinHash: { type: String, required: true }, // 4-digit PIN hash
   rawPickupPin: { type: String }, // Stored for display to customer in demo mode
+  selectedAddons: [
+    {
+      id: { type: String },
+      name: { type: String },
+      price: { type: Number },
+      unit: { type: String },
+      category: { type: String }
+    }
+  ],
+  pricingBreakdown: { type: mongoose.Schema.Types.Mixed },
   printCount: { type: Number, default: 0 },
   printedToPrinter: { type: String }, // Name of hardware printer dispatched to
   printedAt: { type: Date },

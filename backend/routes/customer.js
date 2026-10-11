@@ -144,24 +144,163 @@ router.post('/camera-scan', protect, (req, res, next) => {
   }
 });
 
+// Robust helper to resolve shop by ID, staff user ID, phone, slug, or default
+async function resolveShop(shopParam) {
+  if (!shopParam) return await Shop.findOne();
+
+  // 1. Try finding by MongoDB ObjectId
+  if (mongoose.Types.ObjectId.isValid(shopParam)) {
+    const sById = await Shop.findById(shopParam);
+    if (sById) return sById;
+
+    // Check if it's a Staff user ID
+    const User = require('../models/User');
+    const Staff = require('../models/Staff');
+    const staffUser = await User.findById(shopParam);
+    if (staffUser) {
+      const staffDoc = await Staff.findOne({ userId: staffUser._id });
+      if (staffDoc && staffDoc.shopId) {
+        const sByStaff = await Shop.findById(staffDoc.shopId);
+        if (sByStaff) return sByStaff;
+      }
+    }
+  }
+
+  // 2. Try finding by clean 10-digit phone number
+  const cleanPhone = String(shopParam).replace(/\D/g, '');
+  if (cleanPhone.length >= 10) {
+    const sByPhone = await Shop.findOne({ phone: cleanPhone });
+    if (sByPhone) return sByPhone;
+  }
+
+  // 3. Try finding by slug
+  const sBySlug = await Shop.findOne({ slug: String(shopParam).trim() });
+  if (sBySlug) return sBySlug;
+
+  // 4. Try finding by name (case-insensitive)
+  const sByName = await Shop.findOne({ name: new RegExp(`^${String(shopParam).trim()}$`, 'i') });
+  if (sByName) return sByName;
+
+  return await Shop.findOne();
+}
+
+// Fetch Print Shop info for counter Standee / QR / Link
+router.get('/shop-info', async (req, res) => {
+  try {
+    const { shop: shopParam } = req.query;
+    const shop = await resolveShop(shopParam);
+
+    if (!shop) {
+      return res.status(404).json({ success: false, message: 'Print shop not found' });
+    }
+
+    const branch = await Branch.findOne({ shopId: shop._id }) || await Branch.findOne() || { _id: null, name: 'Main Counter' };
+
+    res.json({
+      success: true,
+      shop: {
+        id: shop._id,
+        _id: shop._id,
+        name: shop.name,
+        slug: shop.slug,
+        ownerName: shop.ownerName || 'Counter In-Charge',
+        phone: shop.phone,
+        email: shop.email || '',
+        address: shop.address || 'Shop Counter',
+        branchId: branch._id,
+        branchName: branch.name,
+        pricing: {
+          A4_BW: shop.settings?.pricing?.A4_BW ?? 2,
+          A4_COLOUR: shop.settings?.pricing?.A4_COLOUR ?? 10,
+          A3_BW: shop.settings?.pricing?.A3_BW ?? 5,
+          A3_COLOUR: shop.settings?.pricing?.A3_COLOUR ?? 20,
+          LEGAL_BW: shop.settings?.pricing?.LEGAL_BW ?? 3,
+          LEGAL_COLOUR: shop.settings?.pricing?.LEGAL_COLOUR ?? 12,
+          GLOSSY_COLOUR: shop.settings?.pricing?.GLOSSY_COLOUR ?? 25,
+          doubleSidedMultiplier: shop.settings?.pricing?.doubleSidedMultiplier ?? 1.8,
+          customItems: Array.isArray(shop.settings?.pricing?.customItems)
+            ? shop.settings.pricing.customItems.filter(it => it.enabled !== false)
+            : []
+        },
+        upiId: shop.settings?.paymentGateway?.upiId || shop.upiId || '',
+        autoPrint: shop.settings?.autoPrint !== false
+      }
+    });
+  } catch (err) {
+    res.status(500).json({ success: false, message: err.message });
+  }
+});
+
+// Helper to get unit price for paper size & color mode
+function getPaperRate(paperSize, colorMode, pricing) {
+  const isColour = colorMode === 'COLOUR';
+  const size = (paperSize || 'A4').toUpperCase();
+  if (size === 'A3') return isColour ? (pricing.A3_COLOUR || 20) : (pricing.A3_BW || 5);
+  if (size === 'LEGAL') return isColour ? (pricing.LEGAL_COLOUR || 12) : (pricing.LEGAL_BW || 3);
+  if (size === 'GLOSSY') return pricing.GLOSSY_COLOUR || 25;
+  return isColour ? (pricing.A4_COLOUR || 10) : (pricing.A4_BW || 2);
+}
+
+// Helper to calculate dynamic addons
+function calculateDynamicAddons(selectedAddons, customItems, totalPagesCount, totalDocsCount) {
+  let addonsTotal = 0;
+  const addonsBreakdown = [];
+  const resolvedAddons = [];
+
+  if (Array.isArray(selectedAddons) && selectedAddons.length > 0 && Array.isArray(customItems)) {
+    selectedAddons.forEach(sel => {
+      const addonId = typeof sel === 'string' ? sel : (sel.id || sel._id);
+      const customItem = customItems.find(it => it.id === addonId || it.name === sel.name);
+      if (customItem && customItem.enabled !== false) {
+        let addonCost = 0;
+        if (customItem.unit === 'per page') {
+          addonCost = customItem.price * Math.max(1, totalPagesCount);
+        } else if (customItem.unit === 'per document') {
+          addonCost = customItem.price * Math.max(1, totalDocsCount);
+        } else {
+          // Flat rate
+          addonCost = customItem.price;
+        }
+        addonCost = Math.ceil(addonCost);
+        addonsTotal += addonCost;
+        addonsBreakdown.push({
+          id: customItem.id,
+          name: customItem.name,
+          price: customItem.price,
+          unit: customItem.unit,
+          category: customItem.category,
+          calculatedPrice: addonCost
+        });
+        resolvedAddons.push({
+          id: customItem.id,
+          name: customItem.name,
+          price: customItem.price,
+          unit: customItem.unit,
+          category: customItem.category
+        });
+      }
+    });
+  }
+
+  return { addonsTotal, addonsBreakdown, resolvedAddons };
+}
+
 // Calculate Pricing preview
 router.post('/calculate-price', protect, async (req, res) => {
   try {
-    const { items, shopId } = req.body;
-    let shop = null;
-    if (shopId) {
-      shop = await Shop.findById(shopId);
-    }
+    const { items, shopId, selectedAddons } = req.body;
+    let shop = await resolveShop(shopId);
     if (!shop) {
-      shop = await Shop.findOne() || {
+      shop = {
         settings: {
           pricing: { A4_BW: 2, A4_COLOUR: 10, A3_BW: 5, A3_COLOUR: 20, doubleSidedMultiplier: 1.8 }
         }
       };
     }
 
-    const pricing = shop.settings.pricing;
-    let totalAmount = 0;
+    const pricing = shop.settings?.pricing || { A4_BW: 2, A4_COLOUR: 10, A3_BW: 5, A3_COLOUR: 20, doubleSidedMultiplier: 1.8 };
+    let documentsTotal = 0;
+    let totalPagesCount = 0;
 
     const breakdown = (items || []).map(item => {
       const totalPages = item.totalPages || item.pageCount || 1;
@@ -169,23 +308,17 @@ router.post('/calculate-price', protect, async (req, res) => {
       const selectedPages = isCustomRange ? parsePageRange(item.pageRange, totalPages) : Array.from({ length: totalPages }, (_, i) => i + 1);
       const pageCount = selectedPages.length;
       const copies = item.copies || 1;
-      const isColour = item.colorMode === 'COLOUR';
-      const isA3 = item.paperSize === 'A3';
       const isDouble = item.sides === 'DOUBLE';
 
-      let basePrice = 2; // Default A4 BW
-      if (isA3 && isColour) basePrice = pricing.A3_COLOUR || 20;
-      else if (isA3 && !isColour) basePrice = pricing.A3_BW || 5;
-      else if (!isA3 && isColour) basePrice = pricing.A4_COLOUR || 10;
-      else basePrice = pricing.A4_BW || 2;
-
+      const basePrice = getPaperRate(item.paperSize, item.colorMode, pricing);
       let itemTotal = pageCount * basePrice * copies;
       if (isDouble && pageCount > 1) {
         itemTotal = itemTotal * (pricing.doubleSidedMultiplier || 0.9);
       }
 
       itemTotal = Math.ceil(itemTotal);
-      totalAmount += itemTotal;
+      documentsTotal += itemTotal;
+      totalPagesCount += (pageCount * copies);
 
       return {
         fileName: item.originalFileName,
@@ -201,7 +334,24 @@ router.post('/calculate-price', protect, async (req, res) => {
       };
     });
 
-    res.json({ success: true, totalAmount, breakdown });
+    const { addonsTotal, addonsBreakdown, resolvedAddons } = calculateDynamicAddons(
+      selectedAddons,
+      pricing.customItems,
+      totalPagesCount,
+      (items || []).length
+    );
+
+    const totalAmount = documentsTotal + addonsTotal;
+
+    res.json({
+      success: true,
+      totalAmount,
+      documentsTotal,
+      addonsTotal,
+      breakdown,
+      addonsBreakdown,
+      resolvedAddons
+    });
   } catch (err) {
     res.status(500).json({ success: false, message: err.message });
   }
@@ -210,17 +360,29 @@ router.post('/calculate-price', protect, async (req, res) => {
 // Create Order with Documents & Print Settings
 router.post('/create-order', protect, async (req, res) => {
   try {
-    const { items, paymentMethod, shopId, branchId } = req.body;
+    const { items, paymentMethod, shopId, branchId, selectedAddons, upiUtr } = req.body;
 
     if (!items || items.length === 0) {
       return res.status(400).json({ success: false, message: 'No document items in order' });
     }
 
-    let shop = shopId ? await Shop.findById(shopId) : await Shop.findOne();
-    let branch = branchId ? await Branch.findById(branchId) : await Branch.findOne();
+    let shop = await resolveShop(shopId);
+    if (!shop) {
+      return res.status(400).json({ success: false, message: 'Shop not configured' });
+    }
 
-    if (!shop || !branch) {
-      return res.status(400).json({ success: false, message: 'Shop or branch not configured' });
+    let branch = branchId ? await Branch.findById(branchId) : null;
+    if (!branch) {
+      branch = await Branch.findOne({ shopId: shop._id }) || await Branch.findOne();
+    }
+    if (!branch) {
+      branch = await Branch.create({
+        shopId: shop._id,
+        name: `${shop.name} - Main Counter`,
+        address: shop.address || 'Main Counter',
+        code: `BR-${(shop.phone || '0000').slice(-4)}`,
+        status: 'ACTIVE'
+      });
     }
 
     const publicOrderId = generatePublicOrderId();
@@ -230,9 +392,10 @@ router.post('/create-order', protect, async (req, res) => {
     const qrTokenHash = hashToken(rawQrToken);
     const pickupPinHash = hashToken(pickupPin);
 
-    // Calculate total price accurately based on selected page counts
-    const pricing = shop.settings.pricing || { A4_BW: 2, A4_COLOUR: 10, A3_BW: 5, A3_COLOUR: 20 };
-    let totalAmount = 0;
+    // Calculate total price accurately based on selected page counts & paper sizes
+    const pricing = shop.settings?.pricing || { A4_BW: 2, A4_COLOUR: 10, A3_BW: 5, A3_COLOUR: 20 };
+    let documentsTotal = 0;
+    let totalPagesCount = 0;
 
     items.forEach(item => {
       const totalPages = item.totalPages || item.pageCount || 1;
@@ -240,15 +403,28 @@ router.post('/create-order', protect, async (req, res) => {
       const selectedPages = isCustomRange ? parsePageRange(item.pageRange, totalPages) : Array.from({ length: totalPages }, (_, i) => i + 1);
       const pages = selectedPages.length;
       const copies = item.copies || 1;
-      const isColour = item.colorMode === 'COLOUR';
-      const isA3 = item.paperSize === 'A3';
-      let rate = isA3 ? (isColour ? pricing.A3_COLOUR : pricing.A3_BW) : (isColour ? pricing.A4_COLOUR : pricing.A4_BW);
+      const rate = getPaperRate(item.paperSize, item.colorMode, pricing);
       let itemTotal = pages * rate * copies;
       if (item.sides === 'DOUBLE' && pages > 1) {
         itemTotal = itemTotal * (pricing.doubleSidedMultiplier || 0.9);
       }
-      totalAmount += Math.ceil(itemTotal);
+      documentsTotal += Math.ceil(itemTotal);
+      totalPagesCount += (pages * copies);
     });
+
+    // Calculate dynamic add-on charges (binding, lamination, etc.)
+    const { addonsTotal, addonsBreakdown, resolvedAddons } = calculateDynamicAddons(
+      selectedAddons,
+      pricing.customItems,
+      totalPagesCount,
+      items.length
+    );
+
+    const totalAmount = documentsTotal + addonsTotal;
+
+    const resolvedMethod = (paymentMethod || 'UPI').toUpperCase();
+    const resolvedPaymentStatus = resolvedMethod === 'CASH' ? 'PENDING' : 'PAID';
+    const resolvedOrderStatus = resolvedMethod === 'CASH' ? 'QUEUED' : 'PAID';
 
     // Create Order Document
     const order = await Order.create({
@@ -256,21 +432,30 @@ router.post('/create-order', protect, async (req, res) => {
       userId: req.user._id,
       shopId: shop._id,
       branchId: branch._id,
-      status: 'PAID', // Direct simulator for shop flow
+      status: resolvedOrderStatus,
       totalAmount,
-      paymentStatus: 'PAID',
+      paymentStatus: resolvedPaymentStatus,
+      paymentMethod: resolvedMethod,
+      upiUtr: upiUtr ? String(upiUtr).trim() : '',
       qrTokenHash,
       pickupPinHash,
-      rawPickupPin: pickupPin // Stored for display to customer in demo UI
+      rawPickupPin: pickupPin, // Stored for display to customer in demo UI
+      selectedAddons: resolvedAddons,
+      pricingBreakdown: {
+        documentsTotal,
+        addonsTotal,
+        addonsBreakdown
+      }
     });
 
     // Save Payment Record
     await Payment.create({
       orderId: order._id,
       amount: totalAmount,
-      method: paymentMethod || 'UPI',
-      status: 'PAID',
-      transactionReference: `TXN-${Date.now()}`
+      method: resolvedMethod === 'CASH' ? 'CASH' : 'UPI',
+      status: resolvedPaymentStatus,
+      transactionReference: upiUtr ? `UTR-${upiUtr}` : `${resolvedMethod}-${Date.now()}`,
+      upiUtr: upiUtr ? String(upiUtr).trim() : ''
     });
 
     // Process Documents & Settings
@@ -322,7 +507,7 @@ router.post('/create-order', protect, async (req, res) => {
         sourceType: item.sourceType || 'UPLOAD',
         fileSize: item.fileSize || 1024,
         pageCount: actualPrintPages,
-        storageKey: finalStorageKey
+        storageKey: finalStorageKey || item.fileUrl || `uploads/private/orders/${order.publicOrderId}/${item.originalFileName || 'document.pdf'}`
       });
 
       await PrintSetting.create({
@@ -353,18 +538,26 @@ router.post('/create-order', protect, async (req, res) => {
     // Notify Connected Dashboard via Socket.io if available
     const io = req.app.get('io');
     if (io) {
-      io.emit('new_order_created', {
+      const orderNotification = {
         orderId: order._id,
+        shopId: shop._id,
         publicOrderId: order.publicOrderId,
         totalAmount: order.totalAmount,
         documentsCount: createdDocs.length,
-        status: order.status
-      });
+        status: order.status,
+        paymentStatus: order.paymentStatus,
+        paymentMethod: order.paymentMethod,
+        upiUtr: order.upiUtr,
+        selectedAddons: resolvedAddons,
+        pricingBreakdown: order.pricingBreakdown
+      };
+      io.emit('new_order_created', orderNotification);
+      io.emit('new_order_queued', orderNotification);
     }
 
     // Auto-Print: If enabled, automatically dispatch document directly to connected printer
     const isAutoPrint = shop.settings?.autoPrint !== false;
-    if (isAutoPrint) {
+    if (isAutoPrint && order.status === 'PAID') {
       try {
         await dispatchPrintJob({
           orderId: order._id,
@@ -384,9 +577,14 @@ router.post('/create-order', protect, async (req, res) => {
         publicOrderId: order.publicOrderId,
         status: order.status,
         totalAmount: order.totalAmount,
+        paymentStatus: order.paymentStatus,
+        paymentMethod: order.paymentMethod,
+        upiUtr: order.upiUtr,
         qrToken: rawQrToken,
         pickupPin: pickupPin,
         documentsCount: createdDocs.length,
+        selectedAddons: resolvedAddons,
+        pricingBreakdown: order.pricingBreakdown,
         createdAt: order.createdAt
       }
     });

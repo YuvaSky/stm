@@ -57,6 +57,18 @@ export const AuthProvider = ({ children }) => {
     }
   };
 
+  const registerShop = async (shopData) => {
+    const res = await axios.post('/api/auth/register-shop', shopData);
+    if (res.data.success) {
+      const newToken = res.data.token;
+      localStorage.setItem('token', newToken);
+      axios.defaults.headers.common['Authorization'] = `Bearer ${newToken}`;
+      setToken(newToken);
+      setUser(res.data.user);
+      return res.data;
+    }
+  };
+
   const logout = () => {
     localStorage.removeItem('token');
     delete axios.defaults.headers.common['Authorization'];
@@ -65,7 +77,7 @@ export const AuthProvider = ({ children }) => {
   };
 
   return (
-    <AuthContext.Provider value={{ user, token, loading, login, register, logout, setUser }}>
+    <AuthContext.Provider value={{ user, token, loading, login, register, registerShop, logout, setUser }}>
       {children}
     </AuthContext.Provider>
   );
