@@ -77,28 +77,37 @@ export default function Footer({ currentView, setCurrentView }) {
 
             {/* Links & Portals */}
             <div className="flex flex-wrap items-center justify-center gap-5 text-xs font-semibold text-slate-600">
-              <button
-                onClick={() => { setCurrentView('customer'); window.scrollTo({ top: 0, behavior: 'smooth' }); }}
-                className="hover:text-cyan-700 transition-colors"
-              >
-                Print Documents
-              </button>
-              
-              <button
-                onClick={() => setHowItWorksOpen(true)}
-                className="hover:text-cyan-700 transition-colors flex items-center gap-1"
-              >
-                <HelpCircle className="w-3.5 h-3.5 text-slate-400" />
-                How It Works
-              </button>
+              {currentView === 'customer' ? (
+                <>
+                  <button
+                    onClick={() => { setCurrentView('customer'); window.scrollTo({ top: 0, behavior: 'smooth' }); }}
+                    className="hover:text-cyan-700 transition-colors"
+                  >
+                    Print Documents
+                  </button>
+                  
+                  <button
+                    onClick={() => setHowItWorksOpen(true)}
+                    className="hover:text-cyan-700 transition-colors flex items-center gap-1"
+                  >
+                    <HelpCircle className="w-3.5 h-3.5 text-slate-400" />
+                    How It Works
+                  </button>
 
-              <button
-                onClick={() => setPricingOpen(true)}
-                className="hover:text-cyan-700 transition-colors flex items-center gap-1"
-              >
-                <FileText className="w-3.5 h-3.5 text-slate-400" />
-                Pricing Rates
-              </button>
+                  <button
+                    onClick={() => setPricingOpen(true)}
+                    className="hover:text-cyan-700 transition-colors flex items-center gap-1"
+                  >
+                    <FileText className="w-3.5 h-3.5 text-slate-400" />
+                    Pricing Rates
+                  </button>
+                </>
+              ) : (
+                <div className="flex items-center gap-2 text-slate-500 font-medium">
+                  <span className="w-2 h-2 rounded-full bg-blue-600"></span>
+                  <span>Print Shop Counter Station • Authorized Access Only</span>
+                </div>
+              )}
             </div>
 
           </div>

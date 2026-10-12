@@ -132,7 +132,7 @@ export default function DocumentReviewModal({ isOpen, onClose, document: doc, on
           <div className="space-y-2.5">
             <div className="flex items-center justify-between">
               <div className="flex bg-slate-100 p-1 rounded-xl border border-slate-200 text-xs">
-                {pageImages.length >= 2 && (
+                {pageImages.length >= 2 && doc.combine2On1 !== false && (
                   <button
                     type="button"
                     onClick={() => setCurrentPageIndex(-1)}
@@ -143,7 +143,7 @@ export default function DocumentReviewModal({ isOpen, onClose, document: doc, on
                     }`}
                   >
                     <Sparkles className="w-3.5 h-3.5 text-amber-300" />
-                    <span>Aadhaar 1-Page Print Preview</span>
+                    <span>Aadhaar 1-Page Combined Preview</span>
                   </button>
                 )}
                 {pageImages.map((_, idx) => (
@@ -153,11 +153,13 @@ export default function DocumentReviewModal({ isOpen, onClose, document: doc, on
                     onClick={() => setCurrentPageIndex(idx)}
                     className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all ${
                       currentPageIndex === idx
-                        ? 'bg-cyan-600 text-white shadow-sm'
+                        ? 'bg-cyan-600 text-white shadow-sm font-extrabold'
                         : 'text-slate-600 hover:text-slate-900'
                     }`}
                   >
-                    {idx === 0 ? 'Photo 1 (Front)' : idx === 1 ? 'Photo 2 (Back)' : `Photo ${idx + 1}`}
+                    {(doc.combine2On1 && pageImages.length === 2)
+                      ? (idx === 0 ? 'Page 1 (Front Side)' : 'Page 2 (Back Side)')
+                      : `Page ${idx + 1}`}
                   </button>
                 ))}
               </div>

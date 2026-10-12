@@ -198,27 +198,32 @@ export default function CustomerApp() {
         const allImages = uploadedDocs.every(d => imageExtensions.includes(d.fileType?.toLowerCase()));
 
         if (uploadedDocs.length >= 2 && allImages) {
-          // Combine multiple photo uploads into 1 Single Document Card (Front & Back)
+          // Multi-image upload: Default to clean separate pages (1 photo per page)
           const pageImages = uploadedDocs.map(d => d.fileUrl);
+          const totalCount = uploadedDocs.length;
+          const isTwoSidedCard = totalCount === 2;
+
           const combinedDoc = {
             id: `doc_${Date.now()}`,
-            originalFileName: `Two-Sided Card / Document (${uploadedDocs.length} Photos)`,
+            originalFileName: isTwoSidedCard
+              ? `Two-Sided ID / Document (2 Photos)`
+              : `Photo Document (${totalCount} Pages)`,
             fileType: 'image',
             fileUrl: uploadedDocs[0].fileUrl,
             frontUrl: uploadedDocs[0].fileUrl,
-            backUrl: uploadedDocs[1].fileUrl,
+            backUrl: uploadedDocs[1]?.fileUrl || uploadedDocs[0].fileUrl,
             pageImages: pageImages,
             tempPath: uploadedDocs[0].tempPath,
             allTempPaths: uploadedDocs.map(d => d.tempPath),
-            totalPages: 1, // 1 sheet for Front & Back layout
-            pageCount: 1,
-            combine2On1: true,
-            layoutMode: 'SIDE_BY_SIDE',
+            totalPages: totalCount, // Default to 1 photo per page (e.g. 3 photos = 3 pages)
+            pageCount: totalCount,
+            combine2On1: false,     // Clean Separate Pages mode by default!
+            layoutMode: 'SEPARATE_PAGES',
             sizeMode: 'ACTUAL',
             pageRange: 'ALL',
             pageSelectionMode: 'ALL',
-            pageRangeInput: '1',
-            selectedPages: [1],
+            pageRangeInput: `1-${totalCount}`,
+            selectedPages: Array.from({ length: totalCount }, (_, i) => i + 1),
             paperSize: 'A4',
             orientation: 'PORTRAIT',
             colorMode: 'BW',
@@ -226,7 +231,6 @@ export default function CustomerApp() {
             copies: 1
           };
           setDocuments(prev => [...prev, combinedDoc]);
-          setCardReviewData(combinedDoc);
         } else {
           // Standard single file / PDF upload mapping
           const newDocs = uploadedDocs.map(d => {
@@ -693,7 +697,9 @@ export default function CustomerApp() {
                           ...doc,
                           frontUrl: doc.frontUrl || doc.pageImages?.[0] || doc.fileUrl,
                           backUrl: doc.backUrl || doc.pageImages?.[1] || doc.fileUrl,
-                          pageImages: doc.pageImages || [doc.fileUrl].filter(Boolean)
+                          pageImages: doc.pageImages || [doc.fileUrl].filter(Boolean),
+                          combine2On1: doc.combine2On1,
+                          layoutMode: doc.layoutMode || (doc.combine2On1 === false ? 'SEPARATE_PAGES' : 'SIDE_BY_SIDE')
                         });
                       }}
                       className="px-3.5 py-2 rounded-xl bg-cyan-600 hover:bg-cyan-500 text-white font-extrabold text-xs shadow-sm flex items-center justify-center gap-1.5 transition-all cursor-pointer flex-1 sm:flex-initial"
@@ -718,28 +724,11 @@ export default function CustomerApp() {
                 {(doc.pageImages?.length >= 2 || doc.totalPages >= 2) && (
                   <div className="bg-gradient-to-r from-purple-50 via-cyan-50 to-blue-50 p-2.5 rounded-xl border border-cyan-200 flex flex-col sm:flex-row sm:items-center justify-between gap-2">
                     <div className="flex items-center space-x-2">
-                      <Sparkles className="w-4 h-4 text-purple-600 shrink-0" />
+                      <Sparkles className="w-4 h-4 text-cyan-600 shrink-0" />
                       <span className="text-xs font-bold text-slate-800">Print Layout Mode:</span>
                     </div>
                     <div className="flex bg-white p-0.5 rounded-lg border border-slate-300 text-xs">
-                      <button
-                        type="button"
-                        onClick={() => {
-                          setDocuments(prev => prev.map((d, i) => i === idx ? {
-                            ...d,
-                            combine2On1: true,
-                            pageCount: 1,
-                            selectedPages: [1]
-                          } : d));
-                        }}
-                        className={`px-3 py-1 rounded-md text-[11px] font-bold transition-all ${
-                          doc.combine2On1 !== false
-                            ? 'bg-purple-600 text-white shadow-xs'
-                            : 'text-slate-600 hover:text-slate-900'
-                        }`}
-                      >
-                        ✓ 2 Photos on 1 Page (Front & Back)
-                      </button>
+                      {/* Separate Pages Button (1 Photo per sheet) */}
                       <button
                         type="button"
                         onClick={() => {
@@ -747,7 +736,10 @@ export default function CustomerApp() {
                           setDocuments(prev => prev.map((d, i) => i === idx ? {
                             ...d,
                             combine2On1: false,
+                            layoutMode: 'SEPARATE_PAGES',
                             pageCount: total,
+                            totalPages: total,
+                            pageRangeInput: `1-${total}`,
                             selectedPages: Array.from({ length: total }, (_, k) => k + 1)
                           } : d));
                         }}
@@ -757,7 +749,32 @@ export default function CustomerApp() {
                             : 'text-slate-600 hover:text-slate-900'
                         }`}
                       >
-                        Separate Pages ({doc.pageImages?.length || doc.totalPages || 2})
+                        ✓ Separate Pages ({doc.pageImages?.length || doc.totalPages || 2})
+                      </button>
+
+                      {/* Combined Sheet Button */}
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setDocuments(prev => prev.map((d, i) => i === idx ? {
+                            ...d,
+                            combine2On1: true,
+                            layoutMode: (doc.pageImages?.length === 2 ? 'SIDE_BY_SIDE' : 'MULTI_GRID'),
+                            pageCount: 1,
+                            totalPages: 1,
+                            pageRangeInput: '1',
+                            selectedPages: [1]
+                          } : d));
+                        }}
+                        className={`px-3 py-1 rounded-md text-[11px] font-bold transition-all ${
+                          doc.combine2On1 !== false
+                            ? 'bg-purple-600 text-white shadow-xs'
+                            : 'text-slate-600 hover:text-slate-900'
+                        }`}
+                      >
+                        {(doc.pageImages?.length || 2) === 2
+                          ? '2 Photos on 1 Page (Front & Back)'
+                          : `Fit All (${doc.pageImages?.length || 3}) on 1 Page`}
                       </button>
                     </div>
                   </div>
@@ -1192,13 +1209,19 @@ export default function CustomerApp() {
             // Apply selected print config to document settings
             setDocuments(prev => prev.map(d => {
               if (d.id === cardReviewData.id || d._id === cardReviewData.id) {
+                const isSep = printConfig.layoutMode === 'SEPARATE_PAGES';
+                const total = d.pageImages?.length || d.totalPages || 2;
                 return {
                   ...d,
                   paperSize: printConfig.paperSize,
                   copies: printConfig.copies,
                   layoutMode: printConfig.layoutMode,
                   sizeMode: printConfig.sizeMode,
-                  orientation: printConfig.orientation
+                  orientation: printConfig.orientation,
+                  combine2On1: !isSep,
+                  pageCount: isSep ? total : 1,
+                  totalPages: isSep ? total : 1,
+                  selectedPages: isSep ? Array.from({ length: total }, (_, k) => k + 1) : [1]
                 };
               }
               return d;

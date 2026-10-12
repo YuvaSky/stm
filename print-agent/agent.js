@@ -52,48 +52,67 @@ socket.on('disconnect', () => {
 
 // Detect Installed System Printers
 async function detectSystemPrinters() {
+  console.log('🔍 Scanning Windows Print Spooler for installed printers...');
+  const detectedPrintersMap = new Map();
+  let defaultPrinterName = null;
+
   if (process.platform === 'win32') {
-    if (ptp && typeof ptp.getPrinters === 'function') {
+    // 1. Get default printer via pdf-to-printer if available
+    if (ptp && typeof ptp.getDefaultPrinter === 'function') {
       try {
-        const printers = await ptp.getPrinters();
-        if (printers && printers.length > 0) {
-          const printerObjects = printers.map(p => ({
-            name: p.name || p.deviceId,
-            isDefault: Boolean(p.isDefault),
-            status: 'Ready'
-          }));
-          console.log('\n[Detected System Printers on Windows via Spooler Engine]:');
-          printerObjects.forEach(p => console.log(` - ${p.name} ${p.isDefault ? '(Default)' : ''}`));
-          socket.emit('agent_printers_detected', { printers: printerObjects });
-          return;
+        const def = await ptp.getDefaultPrinter();
+        if (def && (def.name || def.deviceId)) {
+          defaultPrinterName = def.name || def.deviceId;
         }
       } catch (_) {}
     }
 
+    // 2. Query printers via pdf-to-printer
+    if (ptp && typeof ptp.getPrinters === 'function') {
+      try {
+        const printers = await ptp.getPrinters();
+        if (Array.isArray(printers)) {
+          printers.forEach(p => {
+            const name = p.name || p.deviceId;
+            if (name) {
+              const isDef = name === defaultPrinterName || Boolean(p.isDefault);
+              detectedPrintersMap.set(name, {
+                name,
+                isDefault: isDef,
+                status: 'Ready'
+              });
+              if (isDef) defaultPrinterName = name;
+            }
+          });
+        }
+      } catch (_) {}
+    }
+
+    // 3. Complement with PowerShell Win32_Printer to find all hardware/network printers
     exec('powershell "Get-CimInstance Win32_Printer | Select-Object Name, PrinterStatus, Default | ConvertTo-Json"', (err, stdout) => {
       if (!err && stdout) {
         try {
           const raw = JSON.parse(stdout);
           const arr = Array.isArray(raw) ? raw : [raw];
-          const printerObjects = arr.map(p => ({
-            name: p.Name,
-            isDefault: Boolean(p.Default),
-            status: p.PrinterStatus === 3 ? 'Ready' : 'Normal'
-          }));
-          console.log('\n[Detected System Printers on Windows]:');
-          printerObjects.forEach(p => console.log(` - ${p.name} ${p.isDefault ? '(Default)' : ''}`));
-          socket.emit('agent_printers_detected', { printers: printerObjects });
-          return;
-        } catch (parseErr) {}
+          arr.forEach(p => {
+            if (p.Name) {
+              const isDef = Boolean(p.Default) || p.Name === defaultPrinterName;
+              const existing = detectedPrintersMap.get(p.Name);
+              detectedPrintersMap.set(p.Name, {
+                name: p.Name,
+                isDefault: isDef || (existing ? existing.isDefault : false),
+                status: p.PrinterStatus === 3 ? 'Ready' : 'Normal'
+              });
+              if (isDef) defaultPrinterName = p.Name;
+            }
+          });
+        } catch (_) {}
       }
-      // Fallback
-      exec('powershell "Get-CimInstance Win32_Printer | Select-Object Name, PrinterStatus, Default"', (err2, stdout2) => {
-        if (!err2 && stdout2) {
-          console.log('\n[Detected System Printers on Windows]:');
-          console.log(stdout2.trim());
-          socket.emit('agent_printers_detected', { printers: stdout2.trim() });
-        }
-      });
+
+      const printerObjects = Array.from(detectedPrintersMap.values());
+      console.log(`\n[Detected System Printers on Windows (${printerObjects.length} found)]:`);
+      printerObjects.forEach(p => console.log(` - ${p.name} ${p.isDefault ? '(Default)' : ''}`));
+      socket.emit('agent_printers_detected', { printers: printerObjects });
     });
   } else {
     exec('lpstat -p', (err, stdout) => {
@@ -104,6 +123,12 @@ async function detectSystemPrinters() {
     });
   }
 }
+
+// Listen for manual rescan trigger from Shopkeeper Dashboard
+socket.on('agent_rescan_printers', () => {
+  console.log('🔄 [Agent Rescan]: Manual printer rescan requested by Shopkeeper Dashboard');
+  detectSystemPrinters();
+});
 
 // Listen for Test Print Dispatch from Dashboard
 socket.on('agent_test_print', (testData) => {

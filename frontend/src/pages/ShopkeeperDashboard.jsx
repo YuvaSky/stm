@@ -58,6 +58,9 @@ export default function ShopkeeperDashboard({ setCurrentView }) {
   const [connectedPrinters, setConnectedPrinters] = useState([]);
   const [preferredPrinter, setPreferredPrinter] = useState('AUTO');
   const [printerDropdownOpen, setPrinterDropdownOpen] = useState(false);
+  const [rescanningPrinters, setRescanningPrinters] = useState(false);
+  const [customPrinterInput, setCustomPrinterInput] = useState('');
+  const [showAddCustomPrinter, setShowAddCustomPrinter] = useState(false);
   
   const [manualPinInput, setManualPinInput] = useState('');
   const [actionMessage, setActionMessage] = useState('');
@@ -166,13 +169,30 @@ export default function ShopkeeperDashboard({ setCurrentView }) {
     try {
       const res = await axios.post('/api/shopkeeper/staff', newStaffData);
       if (res.data.success) {
-        setActionMessage(res.data.message);
+        setActionMessage(res.data.message || `✅ Staff '${newStaffData.name}' created! Login Mobile: ${newStaffData.mobile}`);
         setNewStaffData({ name: '', mobile: '', password: '' });
         fetchShopStaff();
-        setTimeout(() => setActionMessage(''), 4000);
+        setTimeout(() => setActionMessage(''), 5000);
       }
     } catch (err) {
       alert('Failed to add staff: ' + (err.response?.data?.message || err.message));
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleDeleteShopStaff = async (staffId, staffName) => {
+    if (!window.confirm(`Are you sure you want to remove staff member '${staffName}'?`)) return;
+    setLoading(true);
+    try {
+      const res = await axios.delete(`/api/shopkeeper/staff/${staffId}`);
+      if (res.data.success) {
+        setActionMessage(res.data.message || 'Staff operator removed');
+        fetchShopStaff();
+        setTimeout(() => setActionMessage(''), 3000);
+      }
+    } catch (err) {
+      alert('Failed to remove staff: ' + (err.response?.data?.message || err.message));
     } finally {
       setLoading(false);
     }
@@ -361,6 +381,47 @@ export default function ShopkeeperDashboard({ setCurrentView }) {
       }
     } catch (err) {
       console.error('Failed to update preferred printer', err);
+    }
+  };
+
+  const handleRescanPrinters = async () => {
+    setRescanningPrinters(true);
+    try {
+      const res = await axios.post('/api/shopkeeper/rescan-printers');
+      if (res.data.success) {
+        if (res.data.printers && res.data.printers.length > 0) {
+          setConnectedPrinters(parsePrintersData(res.data.printers));
+        }
+        setActionMessage(`✅ Windows Spooler rescanned! Found ${res.data.printers?.length || 0} printers.`);
+        setTimeout(() => setActionMessage(''), 3500);
+      }
+    } catch (err) {
+      alert('Rescan failed: ' + (err.response?.data?.message || err.message));
+    } finally {
+      setRescanningPrinters(false);
+    }
+  };
+
+  const handleAddCustomPrinter = async (e) => {
+    if (e && e.preventDefault) e.preventDefault();
+    if (!customPrinterInput.trim()) return;
+    try {
+      const res = await axios.post('/api/shopkeeper/custom-printer', { printerName: customPrinterInput.trim() });
+      if (res.data.success) {
+        const addedPrinterName = res.data.printer.name;
+        setPreferredPrinter(addedPrinterName);
+        setConnectedPrinters(prev => {
+          if (prev.some(p => p.name.toLowerCase() === addedPrinterName.toLowerCase())) return prev;
+          return [...prev, res.data.printer];
+        });
+        setCustomPrinterInput('');
+        setShowAddCustomPrinter(false);
+        setPrinterDropdownOpen(false);
+        setActionMessage(res.data.message);
+        setTimeout(() => setActionMessage(''), 3500);
+      }
+    } catch (err) {
+      alert('Failed to configure printer: ' + (err.response?.data?.message || err.message));
     }
   };
 
@@ -756,7 +817,7 @@ export default function ShopkeeperDashboard({ setCurrentView }) {
               <form onSubmit={handleStaffLogin} className="space-y-4 text-xs">
                 <div>
                   <label className="font-extrabold text-slate-700 block mb-1">
-                    Shop Mobile Number (10 digits)
+                    Shop Mobile Number / Staff Login ID (10 digits)
                   </label>
                   <div className="relative flex items-center">
                     <Phone className="w-4 h-4 text-slate-400 absolute left-3.5 top-1/2 -translate-y-1/2 pointer-events-none" />
@@ -764,7 +825,7 @@ export default function ShopkeeperDashboard({ setCurrentView }) {
                       type="tel"
                       required
                       maxLength={10}
-                      placeholder="e.g. 9999999999"
+                      placeholder="e.g. 9999999999 or staff mobile"
                       value={loginMobile}
                       onChange={(e) => {
                         const val = e.target.value.replace(/\D/g, '');
@@ -857,54 +918,57 @@ export default function ShopkeeperDashboard({ setCurrentView }) {
     <div className="max-w-7xl mx-auto px-4 py-6 space-y-6">
       
       {/* Clean Premium Header & Quick Controls Bar */}
-      <div className="bg-white rounded-3xl p-5 border border-slate-200/80 shadow-xs space-y-4">
+      <div className="bg-white rounded-3xl p-4 sm:p-5 border border-slate-200/90 shadow-sm space-y-3.5">
         
         {/* Top Title & Primary Quick Actions */}
-        <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4 pb-4 border-b border-slate-100">
-          <div className="flex items-center space-x-3">
-            <div className="w-12 h-12 rounded-2xl bg-gradient-to-tr from-blue-600 to-cyan-600 text-white flex items-center justify-center font-bold shadow-md shadow-blue-500/20 shrink-0">
-              <Store className="w-6 h-6" />
+        <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-3.5">
+          <div className="flex items-center space-x-3 min-w-0">
+            <div className="w-11 h-11 sm:w-12 sm:h-12 rounded-2xl bg-gradient-to-tr from-cyan-600 to-blue-600 text-white flex items-center justify-center font-bold shadow-sm shadow-cyan-600/20 shrink-0">
+              <Store className="w-5 h-5 sm:w-6 sm:h-6" />
             </div>
-            <div>
-              <div className="flex items-center gap-2">
-                <h1 className="text-xl sm:text-2xl font-black text-slate-900 tracking-tight">
+            <div className="min-w-0">
+              <div className="flex items-center gap-2 flex-wrap">
+                <h1 className="text-lg sm:text-xl font-black text-slate-900 tracking-tight truncate">
                   {(user?.shopName || user?.shop?.name || (user?.name && user.name !== 'Punit' ? user.name : 'A-ONE')).toUpperCase()} DASHBOARD
                 </h1>
-                <span className="hidden sm:inline-flex items-center px-2.5 py-0.5 rounded-full text-[10px] font-extrabold bg-emerald-100 text-emerald-800 border border-emerald-200">
+                <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-[10px] font-extrabold bg-emerald-50 text-emerald-700 border border-emerald-200/90 shrink-0">
+                  <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse"></span>
                   ONLINE COUNTER
                 </span>
               </div>
-              <p className="text-xs text-slate-500 mt-0.5">Real-time Print Spooler • Hardware Dispatcher • Counter Queue Management</p>
+              <p className="text-[11px] text-slate-500 mt-0.5 font-medium truncate">
+                Real-time Print Spooler • Hardware Dispatcher • Counter Queue Management
+              </p>
             </div>
           </div>
 
-          {/* Core Action Group: Scanner, PIN Input, Logout */}
-          <div className="flex items-center flex-wrap gap-2.5">
-            {/* Quick SCAN QR Button */}
-            <button
-              onClick={() => setIsQrScannerOpen(true)}
-              className="px-4 py-2.5 rounded-xl bg-gradient-to-r from-blue-600 to-cyan-600 hover:from-blue-500 hover:to-cyan-500 text-white font-extrabold text-xs shadow-md shadow-cyan-600/20 flex items-center gap-2 transition-all hover:scale-[1.02] active:scale-95 cursor-pointer"
-            >
-              <QrCode className="w-4 h-4" />
-              <span>SCAN QR</span>
-            </button>
-
+          {/* Core Action Group: PIN Input, Scanner, Logout (Single Clean Row) */}
+          <div className="flex items-center gap-2 shrink-0 flex-wrap sm:flex-nowrap self-start lg:self-auto">
             {/* Quick Pickup PIN Verification Box */}
-            <div className="flex items-center bg-slate-50 border border-slate-200 rounded-xl px-2.5 py-1 shadow-xs focus-within:border-cyan-600 focus-within:bg-white transition-all">
+            <div className="flex items-center bg-slate-50 border border-slate-200 rounded-xl px-2.5 py-1 shadow-2xs focus-within:border-cyan-500 focus-within:bg-white transition-all">
               <input
                 type="text"
                 placeholder="Pickup PIN..."
                 value={manualPinInput}
                 onChange={(e) => setManualPinInput(e.target.value)}
-                className="bg-transparent text-xs text-slate-900 px-1 py-1 focus:outline-none w-24 sm:w-28 font-mono font-bold placeholder:font-sans placeholder:font-normal placeholder:text-slate-400"
+                className="bg-transparent text-xs text-slate-900 px-1 py-0.5 focus:outline-none w-24 sm:w-28 font-mono font-bold placeholder:font-sans placeholder:font-normal placeholder:text-slate-400"
               />
               <button
                 onClick={handleManualPinVerify}
-                className="bg-cyan-600 hover:bg-cyan-500 text-white px-3 py-1 rounded-lg text-xs font-extrabold transition-all shrink-0 cursor-pointer shadow-xs"
+                className="bg-cyan-600 hover:bg-cyan-500 text-white px-2.5 py-1 rounded-lg text-xs font-extrabold transition-all shrink-0 cursor-pointer shadow-xs"
               >
                 Verify
               </button>
             </div>
+
+            {/* Quick SCAN QR Button */}
+            <button
+              onClick={() => setIsQrScannerOpen(true)}
+              className="px-3.5 py-2 rounded-xl bg-gradient-to-r from-blue-600 to-cyan-600 hover:from-blue-500 hover:to-cyan-500 text-white font-extrabold text-xs shadow-sm shadow-cyan-600/20 flex items-center gap-1.5 transition-all hover:scale-[1.02] active:scale-95 cursor-pointer shrink-0"
+            >
+              <QrCode className="w-4 h-4" />
+              <span>Scan QR</span>
+            </button>
 
             {/* Logout Button */}
             <button
@@ -914,7 +978,7 @@ export default function ShopkeeperDashboard({ setCurrentView }) {
                   if (setCurrentView) setCurrentView('shopkeeper');
                 }
               }}
-              className="px-3 py-2.5 rounded-xl text-xs font-bold bg-rose-50 text-rose-700 border border-rose-200 hover:bg-rose-100 flex items-center gap-1.5 transition-all shadow-xs cursor-pointer ml-auto sm:ml-0"
+              className="px-3 py-2 rounded-xl text-xs font-bold bg-rose-50 text-rose-700 border border-rose-200 hover:bg-rose-100 flex items-center gap-1.5 transition-all shadow-2xs cursor-pointer shrink-0"
               title="Sign out of Shopkeeper Dashboard"
             >
               <LogOut className="w-4 h-4 text-rose-600" />
@@ -923,89 +987,87 @@ export default function ShopkeeperDashboard({ setCurrentView }) {
           </div>
         </div>
 
-        {/* Secondary Management Controls Strip - Horizontally scrollable on mobile */}
-        <div className="flex items-center gap-2 pt-1 text-xs overflow-x-auto no-scrollbar py-1">
+        {/* Secondary Management Controls Strip */}
+        <div className="pt-2.5 border-t border-slate-100 flex flex-col md:flex-row md:items-center justify-between gap-2.5 relative">
           
-          {/* Quick Auto-Print Mode Toggle */}
-          <button
-            onClick={toggleAutoPrint}
-            className={`px-3 py-1.5 rounded-xl text-xs font-bold border flex items-center gap-1.5 transition-all shadow-xs cursor-pointer shrink-0 ${
-              autoPrintEnabled
-                ? 'bg-cyan-50 border-cyan-300 text-cyan-800 hover:bg-cyan-100'
-                : 'bg-slate-100 border-slate-200 text-slate-600 hover:bg-slate-200'
-            }`}
-            title="When active, customer orders print automatically upon payment"
-          >
-            <Zap className={`w-3.5 h-3.5 ${autoPrintEnabled ? 'text-cyan-600 fill-cyan-500 animate-pulse' : 'text-slate-400'}`} />
-            <span>{autoPrintEnabled ? 'AUTO-PRINT ON' : 'AUTO-PRINT OFF'}</span>
-          </button>
+          {/* Horizontally scrollable actions on mobile / narrow viewports */}
+          <div className="flex items-center gap-1.5 text-xs overflow-x-auto no-scrollbar py-0.5 min-w-0 flex-1">
+            {/* Quick Auto-Print Mode Toggle */}
+            <button
+              onClick={toggleAutoPrint}
+              className={`px-3 py-1.5 rounded-xl text-xs font-bold border flex items-center gap-1.5 transition-all shadow-xs cursor-pointer shrink-0 ${
+                autoPrintEnabled
+                  ? 'bg-cyan-50 border-cyan-300 text-cyan-800 hover:bg-cyan-100'
+                  : 'bg-slate-100 border-slate-200 text-slate-600 hover:bg-slate-200'
+              }`}
+              title="When active, customer orders print automatically upon payment"
+            >
+              <Zap className={`w-3.5 h-3.5 ${autoPrintEnabled ? 'text-cyan-600 fill-cyan-500 animate-pulse' : 'text-slate-400'}`} />
+              <span>{autoPrintEnabled ? 'AUTO-PRINT ON' : 'AUTO-PRINT OFF'}</span>
+            </button>
 
-          {/* Shopkeeper Customer Upload Portal QR Code Button */}
-          <button
-            onClick={() => setIsShopPortalQrOpen(true)}
-            className="px-3 py-1.5 rounded-xl font-bold bg-purple-50 text-purple-700 border border-purple-200 hover:bg-purple-100 flex items-center gap-1.5 transition-all shadow-xs cursor-pointer shrink-0"
-            title="Display your Customer Upload Portal QR Code & Link"
-          >
-            <QrCode className="w-3.5 h-3.5 text-purple-600" />
-            <span>My Portal QR</span>
-          </button>
+            {/* Shopkeeper Customer Upload Portal QR Code Button */}
+            <button
+              onClick={() => setIsShopPortalQrOpen(true)}
+              className="px-3 py-1.5 rounded-xl font-bold bg-purple-50 text-purple-700 border border-purple-200 hover:bg-purple-100 flex items-center gap-1.5 transition-all shadow-xs cursor-pointer shrink-0"
+              title="Display your Customer Upload Portal QR Code & Link"
+            >
+              <QrCode className="w-3.5 h-3.5 text-purple-600" />
+              <span>My Portal QR</span>
+            </button>
 
-          {/* Manage Print Rates Button */}
-          <button
-            onClick={() => setIsRateModalOpen(true)}
-            className="px-3 py-1.5 rounded-xl font-bold bg-emerald-50 text-emerald-700 border border-emerald-200 hover:bg-emerald-100 flex items-center gap-1.5 transition-all shadow-xs cursor-pointer shrink-0"
-            title="Manage paper & print rates for your shop store"
-          >
-            <DollarSign className="w-3.5 h-3.5 text-emerald-600" />
-            <span>Print Rates</span>
-          </button>
+            {/* Manage Print Rates Button */}
+            <button
+              onClick={() => setIsRateModalOpen(true)}
+              className="px-3 py-1.5 rounded-xl font-bold bg-emerald-50 text-emerald-700 border border-emerald-200 hover:bg-emerald-100 flex items-center gap-1.5 transition-all shadow-xs cursor-pointer shrink-0"
+              title="Manage paper & print rates for your shop store"
+            >
+              <DollarSign className="w-3.5 h-3.5 text-emerald-600" />
+              <span>Print Rates</span>
+            </button>
 
-          {/* Shopkeeper Staff Management Button */}
-          <button
-            onClick={() => setIsStaffModalOpen(true)}
-            className="px-3 py-1.5 rounded-xl font-bold bg-blue-50 text-blue-700 border border-blue-200 hover:bg-blue-100 flex items-center gap-1.5 transition-all shadow-xs cursor-pointer shrink-0"
-            title="Add counter operators & manage staff under your shop"
-          >
-            <Store className="w-3.5 h-3.5 text-blue-600" />
-            <span>Shop Staff</span>
-          </button>
+            {/* Shopkeeper Staff Management Button */}
+            <button
+              onClick={() => setIsStaffModalOpen(true)}
+              className="px-3 py-1.5 rounded-xl font-bold bg-blue-50 text-blue-700 border border-blue-200 hover:bg-blue-100 flex items-center gap-1.5 transition-all shadow-xs cursor-pointer shrink-0"
+              title="Add counter operators & manage staff under your shop"
+            >
+              <Store className="w-3.5 h-3.5 text-blue-600" />
+              <span>Shop Staff</span>
+            </button>
 
-          {/* Payment & UPI Settings Button */}
-          <button
-            onClick={() => {
-              fetchPaymentSettings();
-              setIsPaymentModalOpen(true);
-            }}
-            className="px-3 py-1.5 rounded-xl font-bold bg-indigo-50 text-indigo-700 border border-indigo-200 hover:bg-indigo-100 flex items-center gap-1.5 transition-all shadow-xs cursor-pointer shrink-0"
-            title="Set up your Shop UPI ID and Razorpay credentials to receive customer payments"
-          >
-            <CreditCard className="w-3.5 h-3.5 text-indigo-600" />
-            <span>Payment & UPI</span>
-          </button>
-
-          {/* Shop Details Profile Button */}
-          <button
-            onClick={() => {
-              setIsShopDetailsOpen(true);
-              fetchShopDetails();
-            }}
-            className="px-3 py-1.5 rounded-xl font-bold bg-amber-50 text-amber-900 border border-amber-300 hover:bg-amber-100 flex items-center gap-1.5 transition-all shadow-xs cursor-pointer shrink-0"
-            title="View & manage complete shop details, address, rates & QR"
-          >
-            <Store className="w-3.5 h-3.5 text-amber-600" />
-            <span>Shop Details</span>
-          </button>
-
-          {/* Connected Printers Selector / Dropdown */}
-          <div id="printer-selector-container" className="relative ml-auto shrink-0">
+            {/* Payment & UPI Settings Button */}
             <button
               onClick={() => {
-                if (!agentOnline || connectedPrinters.length === 0) {
-                  setIsPrintAgentModalOpen(true);
-                } else {
-                  setPrinterDropdownOpen(!printerDropdownOpen);
-                }
+                fetchPaymentSettings();
+                setIsPaymentModalOpen(true);
               }}
+              className="px-3 py-1.5 rounded-xl font-bold bg-indigo-50 text-indigo-700 border border-indigo-200 hover:bg-indigo-100 flex items-center gap-1.5 transition-all shadow-xs cursor-pointer shrink-0"
+              title="Set up your Shop UPI ID and Razorpay credentials to receive customer payments"
+            >
+              <CreditCard className="w-3.5 h-3.5 text-indigo-600" />
+              <span>Payment & UPI</span>
+            </button>
+
+            {/* Shop Details Profile Button */}
+            <button
+              onClick={() => {
+                setIsShopDetailsOpen(true);
+                fetchShopDetails();
+              }}
+              className="px-3 py-1.5 rounded-xl font-bold bg-amber-50 text-amber-900 border border-amber-300 hover:bg-amber-100 flex items-center gap-1.5 transition-all shadow-xs cursor-pointer shrink-0"
+              title="View & manage complete shop details, address, rates & QR"
+            >
+              <Store className="w-3.5 h-3.5 text-amber-600" />
+              <span>Shop Details</span>
+            </button>
+          </div>
+
+          {/* Connected Printers Selector / Dropdown - Placed in its own container with overflow-visible so dropdown NEVER clips */}
+          <div id="printer-selector-container" className="relative shrink-0 z-40 self-end md:self-auto">
+            <button
+              type="button"
+              onClick={() => setPrinterDropdownOpen(!printerDropdownOpen)}
               className={`px-3 py-1.5 rounded-xl font-bold border flex items-center gap-2 transition-all shadow-xs cursor-pointer ${
                 agentOnline && connectedPrinters.length > 0
                   ? 'bg-white hover:bg-slate-50 text-slate-800 border-slate-300'
@@ -1032,32 +1094,38 @@ export default function ShopkeeperDashboard({ setCurrentView }) {
                 </div>
               ) : (
                 <div className="flex items-center gap-1.5">
-                  <span>No Printer Connected</span>
-                  <span className="text-[10px] underline font-normal hidden sm:inline">(Connect)</span>
+                  <span>{agentOnline ? 'Select Printer' : 'No Printer Connected'}</span>
+                  <ChevronDown className="w-3 h-3 text-slate-400" />
                 </div>
               )}
             </button>
 
             {/* Dropdown Menu listing all connected printers */}
-            {printerDropdownOpen && agentOnline && (
-              <div className="absolute right-0 mt-2 w-72 sm:w-80 bg-white rounded-2xl shadow-xl border border-slate-200 py-2 z-50 animate-in fade-in zoom-in-95 duration-100">
+            {printerDropdownOpen && (
+              <div className="absolute right-0 mt-2 w-72 sm:w-84 bg-white rounded-2xl shadow-2xl border border-slate-200 py-2 z-50 animate-in fade-in zoom-in-95 duration-100">
                 <div className="px-3.5 py-2 border-b border-slate-100 flex items-center justify-between">
                   <div>
                     <p className="text-[11px] font-extrabold text-slate-900 uppercase tracking-wider flex items-center gap-1.5">
-                      <span className="w-2 h-2 rounded-full bg-emerald-500" />
-                      Connected Printers ({connectedPrinters.length})
+                      <span className={`w-2 h-2 rounded-full ${agentOnline ? 'bg-emerald-500' : 'bg-amber-500'}`} />
+                      {agentOnline ? `Detected Printers (${connectedPrinters.length})` : 'Agent Offline'}
                     </p>
                     <p className="text-[10px] text-slate-500">Target hardware printer for counter orders</p>
                   </div>
-                  <button
-                    onClick={() => { setPrinterDropdownOpen(false); setIsPrintAgentModalOpen(true); }}
-                    className="text-[10px] font-bold text-cyan-600 hover:text-cyan-800 hover:underline cursor-pointer"
-                  >
-                    Test Spooler
-                  </button>
+                  <div className="flex items-center gap-1.5">
+                    <button
+                      type="button"
+                      onClick={handleRescanPrinters}
+                      disabled={rescanningPrinters}
+                      className="px-2 py-1 rounded-lg bg-cyan-50 hover:bg-cyan-100 text-cyan-700 text-[10px] font-extrabold flex items-center gap-1 transition-colors cursor-pointer border border-cyan-200"
+                      title="Rescan Windows print spooler for newly plugged or network printers"
+                    >
+                      <RefreshCw className={`w-3 h-3 ${rescanningPrinters ? 'animate-spin' : ''}`} />
+                      <span>{rescanningPrinters ? 'Scanning...' : 'Rescan'}</span>
+                    </button>
+                  </div>
                 </div>
 
-                <div className="p-1.5 max-h-60 overflow-y-auto space-y-1">
+                <div className="p-1.5 max-h-64 overflow-y-auto space-y-1">
                   {/* Auto-Route to default printer */}
                   <button
                     onClick={() => handleSelectPrinter('AUTO')}
@@ -1080,39 +1148,91 @@ export default function ShopkeeperDashboard({ setCurrentView }) {
                   <div className="border-t border-slate-100 my-1"></div>
 
                   {/* List of Detected Physical / System Printers */}
-                  {connectedPrinters.map((printer, idx) => {
-                    const isSelected = preferredPrinter === printer.name;
-                    return (
+                  {connectedPrinters.length === 0 ? (
+                    <div className="p-3 text-center text-xs text-slate-500">
+                      <p>No printers detected yet.</p>
                       <button
-                        key={idx}
-                        onClick={() => handleSelectPrinter(printer.name)}
-                        className={`w-full text-left px-3 py-2 rounded-xl text-xs flex items-center justify-between transition-colors cursor-pointer ${
-                          isSelected
-                            ? 'bg-blue-50 text-blue-950 font-bold border border-blue-200'
-                            : 'hover:bg-slate-50 text-slate-700'
-                        }`}
+                        onClick={handleRescanPrinters}
+                        className="mt-1 text-cyan-600 font-bold hover:underline text-[11px] cursor-pointer"
                       >
-                        <div className="flex items-center gap-2 min-w-0">
-                          <Printer className="w-3.5 h-3.5 text-slate-500 shrink-0" />
-                          <div className="min-w-0">
-                            <p className="truncate leading-tight font-semibold">{printer.name}</p>
-                            <div className="flex items-center gap-1.5 mt-0.5">
-                              {printer.isDefault && (
-                                <span className="text-[9px] font-bold px-1.5 py-0.2 rounded bg-amber-100 text-amber-800 border border-amber-200">
-                                  Default
+                        Click to Scan Spooler
+                      </button>
+                    </div>
+                  ) : (
+                    connectedPrinters.map((printer, idx) => {
+                      const isSelected = preferredPrinter === printer.name;
+                      return (
+                        <button
+                          key={idx}
+                          onClick={() => handleSelectPrinter(printer.name)}
+                          className={`w-full text-left px-3 py-2 rounded-xl text-xs flex items-center justify-between transition-colors cursor-pointer ${
+                            isSelected
+                              ? 'bg-blue-50 text-blue-950 font-bold border border-blue-200'
+                              : 'hover:bg-slate-50 text-slate-700'
+                          }`}
+                        >
+                          <div className="flex items-center gap-2 min-w-0">
+                            <Printer className="w-3.5 h-3.5 text-slate-500 shrink-0" />
+                            <div className="min-w-0">
+                              <p className="truncate leading-tight font-semibold">{printer.name}</p>
+                              <div className="flex items-center gap-1.5 mt-0.5">
+                                {printer.isDefault && (
+                                  <span className="text-[9px] font-bold px-1.5 py-0.2 rounded bg-amber-100 text-amber-800 border border-amber-200">
+                                    Default
+                                  </span>
+                                )}
+                                <span className="text-[9px] text-emerald-600 font-medium flex items-center gap-0.5">
+                                  <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 inline-block"></span>
+                                  Ready
                                 </span>
-                              )}
-                              <span className="text-[9px] text-emerald-600 font-medium flex items-center gap-0.5">
-                                <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 inline-block"></span>
-                                Connected
-                              </span>
+                              </div>
                             </div>
                           </div>
-                        </div>
-                        {isSelected && <Check className="w-4 h-4 text-blue-600 shrink-0 ml-2" />}
+                          {isSelected && <Check className="w-4 h-4 text-blue-600 shrink-0 ml-2" />}
+                        </button>
+                      );
+                    })
+                  )}
+
+                  {/* Add Custom / Network Printer Form */}
+                  <div className="border-t border-slate-100 pt-1 mt-1">
+                    {!showAddCustomPrinter ? (
+                      <button
+                        type="button"
+                        onClick={() => setShowAddCustomPrinter(true)}
+                        className="w-full text-left px-3 py-1.5 rounded-lg text-[11px] font-bold text-cyan-700 hover:bg-cyan-50 flex items-center gap-1.5 transition-colors cursor-pointer"
+                      >
+                        <span>➕ Add / Select Custom Printer Name</span>
                       </button>
-                    );
-                  })}
+                    ) : (
+                      <form onSubmit={handleAddCustomPrinter} className="p-2 bg-slate-50 rounded-xl space-y-1.5 border border-slate-200">
+                        <label className="text-[10px] font-bold text-slate-600 block">Enter Exact Windows / Network Printer Name:</label>
+                        <div className="flex items-center gap-1">
+                          <input
+                            type="text"
+                            placeholder="e.g. EPSON L3150, HP LaserJet..."
+                            value={customPrinterInput}
+                            onChange={(e) => setCustomPrinterInput(e.target.value)}
+                            className="flex-1 bg-white border border-slate-300 rounded-lg px-2 py-1 text-xs text-slate-800 focus:outline-none focus:border-cyan-500"
+                            autoFocus
+                          />
+                          <button
+                            type="submit"
+                            className="px-2.5 py-1 bg-cyan-600 text-white font-bold text-xs rounded-lg hover:bg-cyan-500 transition-colors cursor-pointer"
+                          >
+                            Set
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => setShowAddCustomPrinter(false)}
+                            className="px-1.5 py-1 text-slate-400 hover:text-slate-600 text-xs cursor-pointer"
+                          >
+                            ✕
+                          </button>
+                        </div>
+                      </form>
+                    )}
+                  </div>
                 </div>
 
                 <div className="p-2 border-t border-slate-100 bg-slate-50/50 rounded-b-2xl">
@@ -1120,7 +1240,7 @@ export default function ShopkeeperDashboard({ setCurrentView }) {
                     onClick={() => { setPrinterDropdownOpen(false); setIsPrintAgentModalOpen(true); }}
                     className="w-full py-1.5 px-2.5 text-[11px] font-bold text-slate-600 hover:text-slate-900 hover:bg-slate-100 rounded-lg flex items-center justify-center gap-1.5 transition-all cursor-pointer"
                   >
-                    <span>⚙️ Manage Spooler & Agent Diagnostics</span>
+                    <span>⚙️ Open Spooler Diagnostics & Test Print</span>
                   </button>
                 </div>
               </div>
@@ -2132,7 +2252,7 @@ export default function ShopkeeperDashboard({ setCurrentView }) {
                   <Store className="w-4 h-4" />
                 </div>
                 <div>
-                  <h3 className="font-extrabold text-base text-slate-900">Manage Shop Counter Staff</h3>
+                  <h3 className="font-extrabold text-base text-slate-900">Manage Shop Counter Staff (Login IDs)</h3>
                   <p className="text-[11px] text-slate-500">Create & manage operators under your shop</p>
                 </div>
               </div>
@@ -2142,6 +2262,17 @@ export default function ShopkeeperDashboard({ setCurrentView }) {
               >
                 <X className="w-4 h-4" />
               </button>
+            </div>
+
+            {/* Informational Guidance Box */}
+            <div className="p-3 bg-blue-50/80 border border-blue-200/80 rounded-2xl flex items-start gap-2.5 text-xs text-blue-900">
+              <KeyRound className="w-4 h-4 text-blue-600 shrink-0 mt-0.5" />
+              <div>
+                <span className="font-extrabold block">Staff Login ID Creation:</span>
+                <span className="text-[11px] text-blue-700 leading-relaxed block">
+                  Add your shop counter operators here. Their 10-digit Mobile Number acts as their Login ID. They can immediately log in from the Shop Counter Login.
+                </span>
+              </div>
             </div>
 
             {/* Add New Staff Form */}
@@ -2163,7 +2294,7 @@ export default function ShopkeeperDashboard({ setCurrentView }) {
                 </div>
 
                 <div>
-                  <label className="font-bold text-slate-700 block mb-1">Mobile Number</label>
+                  <label className="font-bold text-slate-700 block mb-1">Mobile (Login ID)</label>
                   <input
                     type="tel"
                     required
@@ -2191,28 +2322,41 @@ export default function ShopkeeperDashboard({ setCurrentView }) {
               <button
                 type="submit"
                 disabled={loading}
-                className="w-full py-2 bg-blue-600 hover:bg-blue-500 text-white font-extrabold text-xs rounded-xl shadow transition-all cursor-pointer mt-1"
+                className="w-full py-2.5 bg-blue-600 hover:bg-blue-500 text-white font-extrabold text-xs rounded-xl shadow transition-all cursor-pointer mt-1 flex items-center justify-center gap-1.5"
               >
-                {loading ? 'Adding Staff...' : '+ REGISTER STAFF OPERATOR'}
+                <Plus className="w-3.5 h-3.5" />
+                <span>{loading ? 'Registering Staff...' : 'CREATE STAFF LOGIN ID'}</span>
               </button>
             </form>
 
             {/* List of Registered Shop Staff */}
             <div className="space-y-2">
               <h4 className="font-bold text-xs text-slate-700">Existing Counter Operators ({shopStaffList.length})</h4>
-              <div className="max-h-48 overflow-y-auto space-y-2 pr-1">
+              <div className="max-h-52 overflow-y-auto space-y-2 pr-1">
                 {shopStaffList.length === 0 ? (
-                  <p className="text-xs text-slate-400 text-center py-4">No counter operators created yet.</p>
+                  <p className="text-xs text-slate-400 text-center py-4 bg-slate-50 rounded-2xl border border-dashed border-slate-200">
+                    No staff operators created yet. Add one above.
+                  </p>
                 ) : (
                   shopStaffList.map((s, idx) => (
                     <div key={idx} className="bg-white p-3 rounded-2xl border border-slate-200 flex items-center justify-between text-xs shadow-xs">
                       <div>
                         <p className="font-bold text-slate-900">{s.name}</p>
-                        <p className="text-[10px] font-mono text-slate-500">📱 {s.mobile} • {s.branchName}</p>
+                        <p className="text-[10px] font-mono text-slate-500">📱 Login ID: <span className="font-bold text-slate-800">{s.mobile}</span> • {s.branchName}</p>
                       </div>
-                      <span className="text-[10px] font-bold px-2.5 py-0.5 rounded-full bg-emerald-100 text-emerald-800 border border-emerald-200 uppercase">
-                        {s.status}
-                      </span>
+                      <div className="flex items-center gap-2">
+                        <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-emerald-100 text-emerald-800 border border-emerald-200 uppercase">
+                          {s.status}
+                        </span>
+                        <button
+                          type="button"
+                          onClick={() => handleDeleteShopStaff(s._id, s.name)}
+                          className="p-1.5 rounded-lg text-slate-400 hover:text-rose-600 hover:bg-rose-50 transition-colors cursor-pointer"
+                          title="Remove operator account"
+                        >
+                          <Trash2 className="w-3.5 h-3.5" />
+                        </button>
+                      </div>
                     </div>
                   ))
                 )}

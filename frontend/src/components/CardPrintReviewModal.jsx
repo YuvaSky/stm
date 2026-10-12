@@ -11,7 +11,9 @@ export default function CardPrintReviewModal({
   const [imageType, setImageType] = useState(
     cardData?.imageType || (cardData?.pageImages?.length >= 4 ? 'MULTI_GRID' : 'CARD_PAIR')
   ); // CARD_PAIR | PASSPORT | MULTI_GRID | DOCUMENT
-  const [layoutMode, setLayoutMode] = useState(cardData?.layoutMode || 'SIDE_BY_SIDE'); // SIDE_BY_SIDE | TOP_BOTTOM
+  const [layoutMode, setLayoutMode] = useState(
+    cardData?.layoutMode || (cardData?.combine2On1 === false ? 'SEPARATE_PAGES' : 'SIDE_BY_SIDE')
+  ); // SEPARATE_PAGES | SIDE_BY_SIDE | TOP_BOTTOM
   const [sizeMode, setSizeMode] = useState(cardData?.sizeMode || 'ACTUAL'); // ACTUAL | FIT_PAGE | CUSTOM
   const [customScale, setCustomScale] = useState(cardData?.customScale || 100);
   const [paperSize, setPaperSize] = useState(cardData?.paperSize || 'A4');
@@ -171,10 +173,15 @@ export default function CardPrintReviewModal({
 
   if (!isOpen || !cardData) return null;
 
-  // Calculate grid columns and total pages based on count of uploaded images
-  const itemsPerPage = allUploadedImages.length <= 2 ? allUploadedImages.length : (orientation === 'LANDSCAPE' ? 6 : 4);
+  // Calculate grid columns and total pages based on count of uploaded images and layoutMode
+  const isSeparatePages = layoutMode === 'SEPARATE_PAGES';
+  const itemsPerPage = isSeparatePages
+    ? 1
+    : (imageType === 'PASSPORT'
+      ? 1
+      : (allUploadedImages.length <= 2 ? allUploadedImages.length : (orientation === 'LANDSCAPE' ? 6 : 4)));
   const totalPages = Math.max(1, Math.ceil((allUploadedImages.length * copies) / Math.max(1, itemsPerPage)));
-  const safeCurrentPage = Math.min(currentPage, totalPages);
+  const safeCurrentPage = Math.min(Math.max(1, currentPage), totalPages);
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-2 sm:p-4 bg-slate-900/60 backdrop-blur-sm animate-fade-in overflow-hidden">
@@ -363,7 +370,9 @@ export default function CardPrintReviewModal({
                   <div key={idx} className="p-2 rounded-2xl border border-slate-200 bg-white hover:border-cyan-300 transition-all shadow-2xs">
                     <div className="flex items-center justify-between mb-1">
                       <span className="text-[10px] font-black text-cyan-700 uppercase tracking-wide">
-                        {allUploadedImages.length === 2 ? (idx === 0 ? 'FRONT SIDE' : 'BACK SIDE') : `IMAGE #${idx + 1}`}
+                        {(!isSeparatePages && allUploadedImages.length === 2 && imageType === 'CARD_PAIR')
+                          ? (idx === 0 ? 'FRONT SIDE' : 'BACK SIDE')
+                          : `PAGE ${idx + 1} (PHOTO ${idx + 1})`}
                       </span>
                     </div>
                     <div className="w-full h-20 bg-slate-100 rounded-xl border border-slate-200 flex items-center justify-center overflow-hidden mb-1.5 relative">
@@ -450,14 +459,33 @@ export default function CardPrintReviewModal({
               <div className="space-y-1.5">
                 <label className="text-xs font-bold text-slate-700 uppercase tracking-wider flex items-center justify-between">
                   <span>Arrangement Layout</span>
+                  <span className="text-[10px] font-bold text-cyan-700 bg-cyan-50 px-2 py-0.5 rounded-full border border-cyan-200">
+                    {layoutMode === 'SEPARATE_PAGES' ? 'Separate Pages' : 'Combined Sheet'}
+                  </span>
                 </label>
-                <div className="grid grid-cols-2 gap-2">
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
                   <button
                     type="button"
-                    onClick={() => setLayoutMode('SIDE_BY_SIDE')}
-                    className={`p-2.5 rounded-xl border text-left transition-all ${
+                    onClick={() => { setLayoutMode('SEPARATE_PAGES'); setCurrentPage(1); }}
+                    className={`p-2.5 rounded-xl border text-left transition-all cursor-pointer ${
+                      layoutMode === 'SEPARATE_PAGES'
+                        ? 'bg-cyan-50 border-cyan-500 text-cyan-900 font-bold shadow-xs ring-1 ring-cyan-500'
+                        : 'bg-white border-slate-200 text-slate-600 hover:border-slate-300'
+                    }`}
+                  >
+                    <div className="flex items-center justify-between w-full mb-0.5">
+                      <span className="text-xs font-bold">Separate Pages</span>
+                      {layoutMode === 'SEPARATE_PAGES' && <CheckCircle2 className="w-3.5 h-3.5 text-cyan-600" />}
+                    </div>
+                    <span className="text-[10px] text-slate-500 block">1 Photo per sheet ({allUploadedImages.length} pages)</span>
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={() => { setLayoutMode('SIDE_BY_SIDE'); setCurrentPage(1); }}
+                    className={`p-2.5 rounded-xl border text-left transition-all cursor-pointer ${
                       layoutMode === 'SIDE_BY_SIDE'
-                        ? 'bg-cyan-50 border-cyan-500 text-cyan-900 font-bold shadow-xs'
+                        ? 'bg-cyan-50 border-cyan-500 text-cyan-900 font-bold shadow-xs ring-1 ring-cyan-500'
                         : 'bg-white border-slate-200 text-slate-600 hover:border-slate-300'
                     }`}
                   >
@@ -465,15 +493,17 @@ export default function CardPrintReviewModal({
                       <span className="text-xs font-bold">Side-by-Side</span>
                       {layoutMode === 'SIDE_BY_SIDE' && <CheckCircle2 className="w-3.5 h-3.5 text-cyan-600" />}
                     </div>
-                    <span className="text-[10px] text-slate-500 block">Horizontal placement</span>
+                    <span className="text-[10px] text-slate-500 block">
+                      {allUploadedImages.length === 2 ? 'Both photos on 1 sheet' : `Fit all (${allUploadedImages.length}) on 1 sheet`}
+                    </span>
                   </button>
 
                   <button
                     type="button"
-                    onClick={() => setLayoutMode('TOP_BOTTOM')}
-                    className={`p-2.5 rounded-xl border text-left transition-all ${
+                    onClick={() => { setLayoutMode('TOP_BOTTOM'); setCurrentPage(1); }}
+                    className={`p-2.5 rounded-xl border text-left transition-all cursor-pointer ${
                       layoutMode === 'TOP_BOTTOM'
-                        ? 'bg-cyan-50 border-cyan-500 text-cyan-900 font-bold shadow-xs'
+                        ? 'bg-cyan-50 border-cyan-500 text-cyan-900 font-bold shadow-xs ring-1 ring-cyan-500'
                         : 'bg-white border-slate-200 text-slate-600 hover:border-slate-300'
                     }`}
                   >
@@ -481,7 +511,9 @@ export default function CardPrintReviewModal({
                       <span className="text-xs font-bold">Top-and-Bottom</span>
                       {layoutMode === 'TOP_BOTTOM' && <CheckCircle2 className="w-3.5 h-3.5 text-cyan-600" />}
                     </div>
-                    <span className="text-[10px] text-slate-500 block">Vertical placement</span>
+                    <span className="text-[10px] text-slate-500 block">
+                      {allUploadedImages.length === 2 ? 'Vertical 2-on-1 sheet' : `Vertical stack (${allUploadedImages.length} photos)`}
+                    </span>
                   </button>
                 </div>
               </div>
@@ -647,16 +679,20 @@ export default function CardPrintReviewModal({
                       type="button"
                       disabled={safeCurrentPage === 1}
                       onClick={() => setCurrentPage(prev => Math.max(1, prev - 1))}
-                      className="text-slate-600 hover:text-slate-900 disabled:opacity-30"
+                      className="text-slate-600 hover:text-slate-900 disabled:opacity-30 cursor-pointer"
+                      title="Previous Page"
                     >
                       <ChevronLeft className="w-3 h-3" />
                     </button>
-                    <span className="text-slate-800 font-bold">Page {safeCurrentPage} of {totalPages}</span>
+                    <span className="text-slate-800 font-bold">
+                      Page {safeCurrentPage} of {totalPages}
+                    </span>
                     <button
                       type="button"
                       disabled={safeCurrentPage === totalPages}
                       onClick={() => setCurrentPage(prev => Math.min(totalPages, prev + 1))}
-                      className="text-slate-600 hover:text-slate-900 disabled:opacity-30"
+                      className="text-slate-600 hover:text-slate-900 disabled:opacity-30 cursor-pointer"
+                      title="Next Page"
                     >
                       <ChevronRight className="w-3 h-3" />
                     </button>
@@ -705,26 +741,47 @@ export default function CardPrintReviewModal({
                         );
                       })}
                     </div>
-                  ) : allUploadedImages.length === 1 ? (
-                    /* Single Image Layout (Full Size Centered directly on sheet without container box) */
-                    <div className="flex flex-col items-center justify-center w-full h-full my-auto relative p-2">
-                      {showLabels && (
-                        <span className="text-[8.5px] font-extrabold text-slate-500 uppercase mb-1 tracking-wider">SINGLE DOCUMENT IMAGE</span>
-                      )}
-                      <div className="relative max-w-full max-h-[82%] flex items-center justify-center overflow-hidden">
-                        {showCropMarks && (
-                          <div className="absolute -inset-1 border border-dashed border-rose-400/80 pointer-events-none" />
-                        )}
-                        <img
-                          src={allUploadedImages[0]}
-                          alt="Single Image"
-                          style={{
-                            transform: `rotate(${imageRotations[0] || 0}deg) scale(${sizeMode === 'CUSTOM' ? customScale / 100 : sizeMode === 'FIT_PAGE' ? 1.1 : 1.0})`
-                          }}
-                          className="max-w-full max-h-full object-contain rounded-xs shadow-xs"
-                        />
-                      </div>
-                    </div>
+                  ) : (allUploadedImages.length === 1 || isSeparatePages) ? (
+                    /* Single Image or Separate Page Layout (1 Photo per sheet) */
+                    (() => {
+                      const activeImageIdx = isSeparatePages
+                        ? (safeCurrentPage - 1) % allUploadedImages.length
+                        : 0;
+                      const activeImgUrl = allUploadedImages[activeImageIdx] || allUploadedImages[0];
+                      const pageTitle = (!isSeparatePages && allUploadedImages.length === 2 && imageType === 'CARD_PAIR')
+                        ? (activeImageIdx === 0 ? 'FRONT SIDE (PAGE 1)' : 'BACK SIDE (PAGE 2)')
+                        : `PAGE ${safeCurrentPage} OF ${totalPages} (PHOTO ${activeImageIdx + 1})`;
+
+                      return (
+                        <div className="flex flex-col items-center justify-center w-full h-full my-auto relative p-2">
+                          {showLabels && (
+                            <span className="text-[8.5px] font-black text-cyan-800 bg-cyan-50 border border-cyan-200 px-2.5 py-0.5 rounded-full uppercase mb-2 tracking-wider">
+                              📄 {pageTitle}
+                            </span>
+                          )}
+                          <div className="relative max-w-full max-h-[82%] flex items-center justify-center overflow-hidden">
+                            {showCropMarks && (
+                              <div className="absolute -inset-1 border border-dashed border-rose-400/80 pointer-events-none" />
+                            )}
+                            <img
+                              src={activeImgUrl}
+                              alt={pageTitle}
+                              style={{
+                                transform: `rotate(${imageRotations[activeImageIdx] || 0}deg) scale(${sizeMode === 'CUSTOM' ? customScale / 100 : sizeMode === 'FIT_PAGE' ? 1.1 : 1.0})`
+                              }}
+                              className="max-w-full max-h-full object-contain rounded-xs shadow-xs"
+                            />
+                          </div>
+                          {isSeparatePages && totalPages > 1 && (
+                            <div className="mt-2 text-center">
+                              <span className="text-[9px] font-extrabold text-slate-500">
+                                Sheet {safeCurrentPage} of {totalPages} • Individual Separate Page
+                              </span>
+                            </div>
+                          )}
+                        </div>
+                      );
+                    })()
                   ) : (
                     /* Dynamic Page Slice Rendering (Supports multi-page grid pagination) */
                     (() => {
@@ -740,7 +797,9 @@ export default function CardPrintReviewModal({
                                 <div key={globalIdx} className="flex flex-col items-center justify-center relative max-h-full max-w-full min-h-0 overflow-hidden shrink">
                                   {showLabels && (
                                     <span className="text-[8.5px] font-extrabold text-slate-500 uppercase mb-0.5 tracking-wider shrink-0">
-                                      {allUploadedImages.length === 2 ? (globalIdx === 0 ? 'FRONT' : 'BACK') : `PHOTO #${globalIdx + 1}`}
+                                      {(!isSeparatePages && allUploadedImages.length === 2 && imageType === 'CARD_PAIR')
+                                        ? (globalIdx === 0 ? 'FRONT' : 'BACK')
+                                        : `PHOTO #${globalIdx + 1}`}
                                     </span>
                                   )}
                                   <div className="relative max-w-full max-h-[85%] flex items-center justify-center shrink min-h-0 overflow-hidden">
@@ -770,7 +829,9 @@ export default function CardPrintReviewModal({
                                 <div key={globalIdx} className="flex flex-col items-center justify-center relative w-full max-h-[44%] shrink min-h-0 overflow-hidden">
                                   {showLabels && (
                                     <span className="text-[8.5px] font-extrabold text-slate-500 uppercase mb-0.5 tracking-wider shrink-0">
-                                      {allUploadedImages.length === 2 ? (globalIdx === 0 ? 'FRONT' : 'BACK') : `PHOTO #${globalIdx + 1}`}
+                                      {(!isSeparatePages && allUploadedImages.length === 2 && imageType === 'CARD_PAIR')
+                                        ? (globalIdx === 0 ? 'FRONT' : 'BACK')
+                                        : `PHOTO #${globalIdx + 1}`}
                                     </span>
                                   )}
                                   <div className="relative max-w-[85%] max-h-[85%] flex items-center justify-center shrink min-h-0 overflow-hidden">
@@ -807,9 +868,32 @@ export default function CardPrintReviewModal({
               </div>
             </div>
 
+            {/* Quick Page Switcher Strip for Separate Pages */}
+            {isSeparatePages && totalPages > 1 && (
+              <div className="w-full flex items-center justify-center gap-1.5 pt-2 border-t border-slate-200 mt-1 shrink-0 flex-wrap">
+                <span className="text-[10px] font-bold text-slate-500">Preview Page:</span>
+                {allUploadedImages.map((_, pIdx) => (
+                  <button
+                    key={pIdx}
+                    type="button"
+                    onClick={() => setCurrentPage(pIdx + 1)}
+                    className={`px-2.5 py-0.5 rounded-lg text-[10px] font-extrabold transition-all cursor-pointer ${
+                      safeCurrentPage === pIdx + 1
+                        ? 'bg-cyan-600 text-white shadow-xs'
+                        : 'bg-white border border-slate-300 text-slate-700 hover:bg-slate-50'
+                    }`}
+                  >
+                    Page {pIdx + 1}
+                  </button>
+                ))}
+              </div>
+            )}
+
             {/* Bottom Note */}
             <p className="text-[9.5px] text-slate-500 font-medium text-center mt-1 shrink-0">
-              Single A4 sheet view. Content fits within page boundaries.
+              {isSeparatePages
+                ? `Separate Sheet Preview • Viewing Page ${safeCurrentPage} of ${totalPages}`
+                : 'Single A4 sheet view. Content fits within page boundaries.'}
             </p>
 
           </div>
@@ -820,7 +904,11 @@ export default function CardPrintReviewModal({
         <div className="p-4 bg-slate-50 border-t border-slate-200 flex flex-col sm:flex-row items-center justify-between gap-3 shrink-0">
           <div className="flex items-center space-x-2 text-xs text-slate-600">
             <CheckCircle2 className="w-4 h-4 text-emerald-600" />
-            <span>Ready for single-sheet print job</span>
+            <span>
+              {isSeparatePages
+                ? `Ready for ${totalPages} separate pages print job (${allUploadedImages.length} sheets)`
+                : 'Ready for single-sheet print job'}
+            </span>
           </div>
 
           <div className="flex items-center space-x-2 w-full sm:w-auto justify-end">
@@ -845,7 +933,10 @@ export default function CardPrintReviewModal({
                     marginSize,
                     cardSpacing,
                     showCropMarks,
-                    rotations: imageRotations
+                    rotations: imageRotations,
+                    combine2On1: !isSeparatePages,
+                    pageCount: isSeparatePages ? (allUploadedImages.length * copies) : copies,
+                    totalPages: isSeparatePages ? (allUploadedImages.length * copies) : copies
                   });
                 }
                 onClose();

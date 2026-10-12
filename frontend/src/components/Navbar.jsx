@@ -29,74 +29,84 @@ export default function Navbar({ currentView, setCurrentView }) {
               }
             }}
           >
-            <div className="w-9 h-9 rounded-xl bg-gradient-to-tr from-cyan-600 to-blue-600 flex items-center justify-center shadow-md shadow-cyan-600/20 shrink-0">
-              <Printer className="w-5 h-5 text-white" />
+            <div className={`w-9 h-9 rounded-xl flex items-center justify-center shadow-md shrink-0 ${
+              currentView === 'shopkeeper'
+                ? 'bg-gradient-to-tr from-blue-600 to-indigo-700 shadow-blue-600/20'
+                : 'bg-gradient-to-tr from-cyan-600 to-blue-600 shadow-cyan-600/20'
+            }`}>
+              {currentView === 'shopkeeper' ? (
+                <Store className="w-5 h-5 text-white" />
+              ) : (
+                <Printer className="w-5 h-5 text-white" />
+              )}
             </div>
             <div>
               <span className="font-extrabold text-base sm:text-lg text-slate-900 tracking-tight flex items-center gap-1.5">
-                SECURE<span className="text-cyan-600">PRINT</span>
-                <span className="text-[10px] font-bold px-1.5 py-0.2 rounded-full bg-cyan-100 text-cyan-700 border border-cyan-200">
-                  EXPRESS
+                SECURE<span className={currentView === 'shopkeeper' ? 'text-blue-600' : 'text-cyan-600'}>PRINT</span>
+                <span className={`text-[10px] font-bold px-1.5 py-0.2 rounded-full border ${
+                  currentView === 'shopkeeper'
+                    ? 'bg-blue-100 text-blue-800 border-blue-200'
+                    : 'bg-cyan-100 text-cyan-700 border-cyan-200'
+                }`}>
+                  {currentView === 'shopkeeper' ? 'COUNTER' : 'EXPRESS'}
                 </span>
               </span>
-              <p className="text-[9px] text-slate-500 font-medium hidden sm:block">Instant Self-Service Counter Printing</p>
+              <p className="text-[9px] text-slate-500 font-medium hidden sm:block">
+                {currentView === 'shopkeeper'
+                  ? 'Shopkeeper Queue & Spooler Operations'
+                  : 'Instant Self-Service Counter Printing'}
+              </p>
             </div>
           </div>
 
           {/* Navigation Links for Customer (or Staff Controls if Logged In) */}
           <div className="hidden md:flex items-center space-x-2">
             
-            {/* If Staff / Admin is logged in AND not on Customer View, show their management tabs */}
-            {isStaffOrAdmin && currentView !== 'customer' ? (
-              <div className="flex items-center bg-slate-100 p-1 rounded-xl border border-slate-200 text-xs font-semibold">
-                <button
-                  onClick={() => setCurrentView('shopkeeper')}
-                  className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg transition-all ${
-                    currentView === 'shopkeeper'
-                      ? 'bg-blue-600 text-white shadow font-bold'
-                      : 'text-slate-600 hover:text-slate-900'
-                  }`}
-                >
-                  <Store className="w-3.5 h-3.5" />
-                  Shop Queue
-                </button>
-
-                {['ADMIN', 'MANAGER', 'DEVELOPER'].includes(user.role) && (
+            {/* If on Shopkeeper View */}
+            {currentView === 'shopkeeper' ? (
+              isStaffOrAdmin ? (
+                <div className="flex items-center bg-slate-100 p-1 rounded-xl border border-slate-200 text-xs font-semibold">
                   <button
-                    onClick={() => setCurrentView('admin')}
-                    className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg transition-all ${
-                      currentView === 'admin'
-                        ? 'bg-purple-600 text-white shadow font-bold'
-                        : 'text-slate-600 hover:text-slate-900'
-                    }`}
+                    onClick={() => setCurrentView('shopkeeper')}
+                    className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-blue-600 text-white shadow font-bold"
                   >
-                    <Shield className="w-3.5 h-3.5" />
-                    Admin Config
+                    <Store className="w-3.5 h-3.5" />
+                    Shop Queue
                   </button>
-                )}
 
-                {user.role === 'DEVELOPER' && (
-                  <button
-                    onClick={() => setCurrentView('developer')}
-                    className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg transition-all ${
-                      currentView === 'developer'
-                        ? 'bg-cyan-600 text-white shadow font-bold'
-                        : 'text-cyan-700 hover:text-cyan-900'
-                    }`}
-                  >
-                    <Cpu className="w-3.5 h-3.5" />
-                    Developer Portal
-                  </button>
-                )}
-              </div>
+                  {['ADMIN', 'MANAGER', 'DEVELOPER'].includes(user.role) && (
+                    <button
+                      onClick={() => setCurrentView('admin')}
+                      className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-slate-600 hover:text-slate-900 transition-all"
+                    >
+                      <Shield className="w-3.5 h-3.5" />
+                      Admin Config
+                    </button>
+                  )}
+
+                  {user.role === 'DEVELOPER' && (
+                    <button
+                      onClick={() => setCurrentView('developer')}
+                      className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-cyan-700 hover:text-cyan-900 transition-all"
+                    >
+                      <Cpu className="w-3.5 h-3.5" />
+                      Developer Portal
+                    </button>
+                  )}
+                </div>
+              ) : (
+                /* Unauthenticated Shopkeeper Counter Header Badge */
+                <div className="flex items-center gap-2 px-3 py-1.5 rounded-xl bg-blue-50/80 border border-blue-200/80 text-blue-900 text-xs font-bold">
+                  <Store className="w-3.5 h-3.5 text-blue-600" />
+                  <span>Shop Counter Desk • Operator Sign-In</span>
+                </div>
+              )
             ) : (
-              /* Public / Customer Navigation Links */
+              /* Public / Customer Navigation Links (Only shown on Customer View) */
               <div className="flex items-center space-x-1 text-xs font-semibold text-slate-600">
                 <button
                   onClick={() => { setCurrentView('customer'); window.scrollTo({ top: 0, behavior: 'smooth' }); }}
-                  className={`px-3 py-1.5 rounded-lg transition-colors ${
-                    currentView === 'customer' ? 'text-cyan-700 font-bold bg-cyan-50/60' : 'hover:text-slate-900 hover:bg-slate-50'
-                  }`}
+                  className="px-3 py-1.5 rounded-lg text-cyan-700 font-bold bg-cyan-50/60"
                 >
                   Express Print
                 </button>
@@ -151,7 +161,7 @@ export default function Navbar({ currentView, setCurrentView }) {
                 <span>Shop Counter Portal</span>
               </div>
             ) : (
-              /* Customer view: Clean status badge, no staff/shop login buttons */
+              /* Customer view: Clean status badge */
               <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-cyan-50/80 border border-cyan-200/60 text-cyan-800 text-xs font-bold">
                 <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></span>
                 <span>Self-Service Print Desk</span>
@@ -209,37 +219,35 @@ export default function Navbar({ currentView, setCurrentView }) {
               ) : (
                 <>
                   <div className="font-bold text-[10px] text-slate-400 uppercase tracking-wider">
-                    Staff & Shop Operations
+                    Shop Counter Operations
                   </div>
                   <button
                     onClick={() => { setCurrentView('shopkeeper'); setMobileMenuOpen(false); }}
-                    className={`flex items-center gap-2 p-2.5 rounded-xl transition-all ${
-                      currentView === 'shopkeeper' ? 'bg-blue-600 text-white font-bold' : 'text-slate-700 bg-slate-50'
-                    }`}
+                    className="flex items-center gap-2 p-2.5 rounded-xl bg-blue-600 text-white font-bold transition-all"
                   >
                     <Store className="w-4 h-4" />
-                    Shopkeeper Queue
+                    Shop Counter Portal
                   </button>
 
-                  {['ADMIN', 'MANAGER'].includes(user.role) && (
+                  {isStaffOrAdmin && ['ADMIN', 'MANAGER'].includes(user?.role) && (
                     <button
                       onClick={() => { setCurrentView('admin'); setMobileMenuOpen(false); }}
-                      className={`flex items-center gap-2 p-2.5 rounded-xl transition-all ${
-                        currentView === 'admin' ? 'bg-purple-600 text-white font-bold' : 'text-slate-700 bg-slate-50'
-                      }`}
+                      className="flex items-center gap-2 p-2.5 rounded-xl text-slate-700 bg-slate-50 hover:bg-slate-100 transition-all"
                     >
                       <Shield className="w-4 h-4" />
                       Admin Configuration
                     </button>
                   )}
 
-                  <button
-                    onClick={() => { logout(); setCurrentView('shopkeeper'); setMobileMenuOpen(false); }}
-                    className="flex items-center gap-2 p-2.5 rounded-xl text-rose-600 bg-rose-50 hover:bg-rose-100 font-bold"
-                  >
-                    <LogOut className="w-4 h-4" />
-                    Sign Out ({user.name})
-                  </button>
+                  {isStaffOrAdmin && (
+                    <button
+                      onClick={() => { logout(); setCurrentView('shopkeeper'); setMobileMenuOpen(false); }}
+                      className="flex items-center gap-2 p-2.5 rounded-xl text-rose-600 bg-rose-50 hover:bg-rose-100 font-bold"
+                    >
+                      <LogOut className="w-4 h-4" />
+                      Sign Out ({user.name})
+                    </button>
+                  )}
                 </>
               )}
             </div>

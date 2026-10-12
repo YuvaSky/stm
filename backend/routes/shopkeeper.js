@@ -561,6 +561,89 @@ router.get('/agent-status', (req, res) => {
   });
 });
 
+// Trigger a real-time rescan of all Windows Spooler & Physical Printers
+router.post('/rescan-printers', async (req, res) => {
+  try {
+    const io = req.app.get('io');
+    if (io) {
+      io.emit('agent_rescan_printers', { timestamp: new Date() });
+    }
+
+    // Wait a brief moment for the local agent to scan spooler and emit back
+    await new Promise(r => setTimeout(r, 1200));
+
+    const activeAgents = req.app.get('activeAgents');
+    const agentsList = activeAgents ? Array.from(activeAgents.values()) : [];
+    const list = [];
+    agentsList.forEach(agent => {
+      if (!agent.printers) return;
+      if (Array.isArray(agent.printers)) {
+        agent.printers.forEach(p => {
+          if (typeof p === 'string') list.push({ name: p, isDefault: false, status: 'Ready' });
+          else if (p && p.name) list.push({ name: p.name, isDefault: Boolean(p.isDefault), status: p.status || 'Ready' });
+        });
+      }
+    });
+
+    const seen = new Set();
+    const printers = list.filter(p => {
+      if (seen.has(p.name)) return false;
+      seen.add(p.name);
+      return true;
+    });
+
+    res.json({
+      success: true,
+      message: `Scanned ${printers.length} printer(s) from Windows Spooler`,
+      printers
+    });
+  } catch (err) {
+    res.status(500).json({ success: false, message: err.message });
+  }
+});
+
+// Register or set a manual / network printer directly
+router.post('/custom-printer', async (req, res) => {
+  try {
+    const { printerName } = req.body;
+    if (!printerName || !printerName.trim()) {
+      return res.status(400).json({ success: false, message: 'Printer name is required' });
+    }
+    const cleanName = printerName.trim();
+    const currentShop = await getShopForUser(req.user);
+
+    let printerDoc = await Printer.findOne({ name: cleanName });
+    if (!printerDoc) {
+      printerDoc = await Printer.create({
+        branchId: currentShop?._id ? String(currentShop._id) : 'Main_Branch',
+        name: cleanName,
+        type: 'LASER',
+        capabilities: { paperSizes: ['A4', 'A3'], color: true, duplex: true },
+        status: 'ONLINE'
+      });
+    }
+
+    // Update shop autoprint preferred printer
+    if (currentShop) {
+      currentShop.preferredPrinter = cleanName;
+      await currentShop.save();
+    }
+
+    const io = req.app.get('io');
+    if (io) {
+      io.emit('autoprint_settings_updated', { preferredPrinter: cleanName });
+    }
+
+    res.json({
+      success: true,
+      message: `Active printer configured: ${cleanName}`,
+      printer: { name: cleanName, isDefault: false, status: 'Ready' }
+    });
+  } catch (err) {
+    res.status(500).json({ success: false, message: err.message });
+  }
+});
+
 // Dispatch a Test Print Job Signal to Local Print Agent
 router.post('/test-print', async (req, res) => {
   try {
@@ -592,19 +675,17 @@ router.post('/test-print', async (req, res) => {
   }
 });
 
-// Get list of all staff members under shopkeeper
 // Get list of all staff members under current shopkeeper's shop
 router.get('/staff', async (req, res) => {
   try {
     const Staff = require('../models/Staff');
     const Branch = require('../models/Branch');
 
-    const shopkeeperStaffRecord = await Staff.findOne({ userId: req.user._id });
-    let shopId = shopkeeperStaffRecord ? shopkeeperStaffRecord.shopId : null;
+    const currentShop = await getShopForUser(req.user);
+    const shopId = currentShop ? currentShop._id : null;
 
     if (!shopId) {
-      const shop = await Shop.findOne();
-      shopId = shop ? shop._id : null;
+      return res.json({ success: true, staff: [] });
     }
 
     const shopStaffList = await Staff.find({ shopId })
@@ -633,9 +714,14 @@ router.get('/staff', async (req, res) => {
 // Create a new staff member (counter operator) for current shopkeeper
 router.post('/staff', async (req, res) => {
   try {
-    const { name, mobile, password } = req.body;
+    let { name, mobile, password } = req.body;
     if (!name || !mobile || !password) {
       return res.status(400).json({ success: false, message: 'Name, Mobile Number, and Password are required for staff.' });
+    }
+
+    mobile = String(mobile).replace(/\D/g, '').trim();
+    if (mobile.length !== 10) {
+      return res.status(400).json({ success: false, message: 'Please enter a valid 10-digit mobile number for staff login.' });
     }
 
     const existing = await User.findOne({ mobile });
@@ -646,9 +732,8 @@ router.post('/staff', async (req, res) => {
     const Staff = require('../models/Staff');
     const Branch = require('../models/Branch');
 
-    const shopkeeperStaffRecord = await Staff.findOne({ userId: req.user._id });
-    let shopId = shopkeeperStaffRecord ? shopkeeperStaffRecord.shopId : null;
-    let branchId = shopkeeperStaffRecord ? shopkeeperStaffRecord.branchId : null;
+    const currentShop = await getShopForUser(req.user);
+    let shopId = currentShop ? currentShop._id : null;
 
     if (!shopId) {
       let shop = await Shop.findOne();
@@ -658,19 +743,17 @@ router.post('/staff', async (req, res) => {
       shopId = shop._id;
     }
 
-    if (!branchId) {
-      let branch = await Branch.findOne({ shopId });
-      if (!branch) {
-        branch = await Branch.create({ shopId, name: 'Main Counter', code: 'BR-01' });
-      }
-      branchId = branch._id;
+    let branch = await Branch.findOne({ shopId });
+    if (!branch) {
+      branch = await Branch.create({ shopId, name: 'Main Counter', code: 'BR-01' });
     }
+    const branchId = branch._id;
 
     const salt = await bcrypt.genSalt(10);
     const passwordHash = await bcrypt.hash(password, salt);
 
     const newUser = await User.create({
-      name,
+      name: name.trim(),
       mobile,
       passwordHash,
       role: 'STAFF'
@@ -686,15 +769,37 @@ router.post('/staff', async (req, res) => {
 
     res.json({
       success: true,
-      message: `✅ Staff Operator '${name}' added to your shop successfully!`,
+      message: `✅ Staff operator '${name}' created! Login ID: ${mobile}`,
       staff: {
         _id: newStaffRecord._id,
         name: newUser.name,
         mobile: newUser.mobile,
         role: newStaffRecord.role,
-        status: newStaffRecord.status
+        status: newStaffRecord.status,
+        branchName: branch.name,
+        createdAt: newStaffRecord.createdAt
       }
     });
+  } catch (err) {
+    res.status(500).json({ success: false, message: err.message });
+  }
+});
+
+// Delete a staff member under shopkeeper
+router.delete('/staff/:id', async (req, res) => {
+  try {
+    const Staff = require('../models/Staff');
+    const staff = await Staff.findById(req.params.id);
+    if (!staff) {
+      return res.status(404).json({ success: false, message: 'Staff record not found' });
+    }
+
+    if (staff.userId) {
+      await User.findByIdAndDelete(staff.userId);
+    }
+    await Staff.findByIdAndDelete(req.params.id);
+
+    res.json({ success: true, message: 'Staff operator removed successfully' });
   } catch (err) {
     res.status(500).json({ success: false, message: err.message });
   }
