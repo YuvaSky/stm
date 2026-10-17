@@ -9,4 +9,5 @@ try {
 }
 const app = require('../../backend/app');
 
+// Force function bundle update: v2.1-connected
 module.exports.handler = serverless(app);
