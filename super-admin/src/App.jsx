@@ -3,7 +3,7 @@ import axios from 'axios';
 import SuperAdminConsole from './pages/SuperAdminConsole';
 
 const API_BASE = import.meta.env.VITE_API_URL || 
-  (window.location.hostname === 'localhost' ? 'http://localhost:5000' : 'https://secure-print-application.netlify.app');
+  (window.location.hostname === 'localhost' ? 'http://localhost:5000' : 'https://secureprintapplication.netlify.app');
 axios.defaults.baseURL = API_BASE;
 
 export default function App() {
