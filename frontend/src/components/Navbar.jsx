@@ -59,44 +59,36 @@ export default function Navbar({ currentView, setCurrentView }) {
             </div>
           </div>
 
-          {/* Customer & Shop Counter Switcher */}
-          <div className="hidden md:flex items-center space-x-1.5 bg-slate-100/90 p-1 rounded-2xl border border-slate-200 text-xs font-bold">
-            <button
-              onClick={() => setCurrentView('customer')}
-              className={`flex items-center gap-1.5 px-3 py-1.5 rounded-xl transition-all cursor-pointer ${
-                currentView === 'customer'
-                  ? 'bg-cyan-600 text-white shadow-sm shadow-cyan-600/30'
-                  : 'text-slate-600 hover:text-slate-900 hover:bg-white/60'
-              }`}
-            >
-              <Smartphone className="w-3.5 h-3.5" />
-              <span>Customer Upload</span>
-            </button>
-
-            <button
-              onClick={() => setCurrentView('shopkeeper')}
-              className={`flex items-center gap-1.5 px-3 py-1.5 rounded-xl transition-all cursor-pointer ${
-                currentView === 'shopkeeper'
-                  ? 'bg-blue-600 text-white shadow-sm shadow-blue-600/30'
-                  : 'text-slate-600 hover:text-slate-900 hover:bg-white/60'
-              }`}
-            >
-              <Store className="w-3.5 h-3.5" />
-              <span>Shop Counter</span>
-            </button>
-
-            {user && ['ADMIN', 'MANAGER', 'DEVELOPER'].includes(user?.role) && (
-              <button
-                onClick={() => setCurrentView('admin')}
-                className={`flex items-center gap-1.5 px-3 py-1.5 rounded-xl transition-all cursor-pointer ${
-                  currentView === 'admin'
-                    ? 'bg-purple-600 text-white shadow-sm shadow-purple-600/30'
-                    : 'text-purple-700 hover:text-purple-900 hover:bg-purple-50'
-                }`}
-              >
-                <Shield className="w-3.5 h-3.5" />
-                <span>Admin Console</span>
-              </button>
+          {/* Center Navigation Bar */}
+          <div className="hidden md:flex items-center space-x-2">
+            {currentView === 'shopkeeper' ? (
+              <div className="flex items-center gap-2 px-3 py-1.5 rounded-xl bg-blue-50/80 border border-blue-200/80 text-blue-900 text-xs font-bold">
+                <Store className="w-3.5 h-3.5 text-blue-600" />
+                <span>Shop Counter Desk • Operator Sign-In</span>
+              </div>
+            ) : (
+              <div className="flex items-center space-x-1 text-xs font-semibold text-slate-600">
+                <button
+                  onClick={() => { setCurrentView('customer'); window.scrollTo({ top: 0, behavior: 'smooth' }); }}
+                  className="px-3 py-1.5 rounded-lg text-cyan-700 font-bold bg-cyan-50/60 cursor-pointer"
+                >
+                  Express Print
+                </button>
+                <button
+                  onClick={() => setHowItWorksOpen(true)}
+                  className="px-3 py-1.5 rounded-lg hover:text-slate-900 hover:bg-slate-50 transition-colors flex items-center gap-1 cursor-pointer"
+                >
+                  <HelpCircle className="w-3.5 h-3.5 text-slate-400" />
+                  How It Works
+                </button>
+                <button
+                  onClick={() => setPricingOpen(true)}
+                  className="px-3 py-1.5 rounded-lg hover:text-slate-900 hover:bg-slate-50 transition-colors flex items-center gap-1 cursor-pointer"
+                >
+                  <FileText className="w-3.5 h-3.5 text-slate-400" />
+                  Print Rates
+                </button>
+              </div>
             )}
           </div>
 
@@ -127,15 +119,15 @@ export default function Navbar({ currentView, setCurrentView }) {
                   <span>Logout</span>
                 </button>
               </div>
+            ) : currentView === 'shopkeeper' ? (
+              <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-blue-50/80 border border-blue-200/60 text-blue-800 text-xs font-bold">
+                <Store className="w-3.5 h-3.5 text-blue-600" />
+                <span>Shop Counter Portal</span>
+              </div>
             ) : (
-              <div className="flex items-center gap-2">
-                <button
-                  onClick={() => setCurrentView('shopkeeper')}
-                  className="px-3.5 py-1.5 rounded-xl bg-blue-600 hover:bg-blue-500 text-white font-bold text-xs shadow-sm flex items-center gap-1.5 cursor-pointer"
-                >
-                  <User className="w-3.5 h-3.5" />
-                  <span>Sign In</span>
-                </button>
+              <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-cyan-50/80 border border-cyan-200/60 text-cyan-800 text-xs font-bold">
+                <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></span>
+                <span>Self-Service Print Desk</span>
               </div>
             )}
           </div>
@@ -160,33 +152,37 @@ export default function Navbar({ currentView, setCurrentView }) {
         {/* Mobile Navigation Drawer */}
         {mobileMenuOpen && (
           <div className="md:hidden border-t border-slate-200 bg-white px-4 pt-3 pb-6 space-y-3">
-            <div className="grid grid-cols-2 gap-2 text-xs font-bold">
-              <button
-                onClick={() => { setCurrentView('customer'); setMobileMenuOpen(false); }}
-                className={`p-2.5 rounded-xl border flex items-center gap-2 ${currentView === 'customer' ? 'bg-cyan-600 text-white border-cyan-600' : 'bg-slate-50 text-slate-700 border-slate-200'}`}
-              >
-                <Smartphone className="w-4 h-4" />
-                <span>Customer Upload</span>
-              </button>
-              <button
-                onClick={() => { setCurrentView('shopkeeper'); setMobileMenuOpen(false); }}
-                className={`p-2.5 rounded-xl border flex items-center gap-2 ${currentView === 'shopkeeper' ? 'bg-blue-600 text-white border-blue-600' : 'bg-slate-50 text-slate-700 border-slate-200'}`}
-              >
-                <Store className="w-4 h-4" />
-                <span>Shop Counter</span>
-              </button>
-              {user && ['ADMIN', 'MANAGER', 'DEVELOPER'].includes(user?.role) && (
+            {currentView === 'customer' ? (
+              <div className="space-y-2">
                 <button
-                  onClick={() => { setCurrentView('admin'); setMobileMenuOpen(false); }}
-                  className={`col-span-2 p-2.5 rounded-xl border flex items-center justify-center gap-2 ${currentView === 'admin' ? 'bg-purple-600 text-white border-purple-600' : 'bg-purple-50 text-purple-700 border-purple-200'}`}
+                  onClick={() => { setCurrentView('customer'); setMobileMenuOpen(false); }}
+                  className="w-full text-left p-2.5 rounded-xl bg-cyan-600 text-white font-bold text-xs"
                 >
-                  <Shield className="w-4 h-4" />
-                  <span>Admin Console</span>
+                  Express Print Store
                 </button>
-              )}
-            </div>
+                <button
+                  onClick={() => { setHowItWorksOpen(true); setMobileMenuOpen(false); }}
+                  className="w-full text-left p-2.5 rounded-xl text-slate-700 bg-slate-50 font-semibold text-xs"
+                >
+                  How It Works
+                </button>
+                <button
+                  onClick={() => { setPricingOpen(true); setMobileMenuOpen(false); }}
+                  className="w-full text-left p-2.5 rounded-xl text-slate-700 bg-slate-50 font-semibold text-xs"
+                >
+                  Print Rates & Pricing
+                </button>
+              </div>
+            ) : (
+              <div className="space-y-2">
+                <div className="p-2.5 rounded-xl bg-blue-50 text-blue-800 font-bold text-xs flex items-center gap-2">
+                  <Store className="w-4 h-4 text-blue-600" />
+                  <span>Shop Counter Portal</span>
+                </div>
+              </div>
+            )}
 
-            {user ? (
+            {user && (
               <div className="pt-2 border-t border-slate-100 flex items-center justify-between">
                 <div>
                   <p className="text-xs font-bold text-slate-800">{user.name}</p>
@@ -200,13 +196,6 @@ export default function Navbar({ currentView, setCurrentView }) {
                   <span>Logout</span>
                 </button>
               </div>
-            ) : (
-              <button
-                onClick={() => { setCurrentView('shopkeeper'); setMobileMenuOpen(false); }}
-                className="w-full py-2.5 bg-blue-600 text-white rounded-xl font-bold text-xs text-center cursor-pointer"
-              >
-                Sign In
-              </button>
             )}
           </div>
         )}

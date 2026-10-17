@@ -1,5 +1,5 @@
 [build]
-  command = "npm install && cd frontend && npm install && npm run build && cd ../backend && npm install && cd ../super-admin && npm install && npm run build && cd .. && node -e \"const fs=require('fs'); fs.cpSync('super-admin/dist', 'frontend/dist/admin', { recursive: true });\""
+  command = "npm install && cd frontend && npm install && npm run build && cd ../backend && npm install"
   publish = "frontend/dist"
   functions = "netlify/functions"
 
@@ -13,17 +13,6 @@
 [functions]
   node_bundler = "esbuild"
   external_node_modules = ["mongodb-memory-server"]
-
-# Route /admin/* requests to Super Admin Single-Page App
-[[redirects]]
-  from = "/admin/*"
-  to = "/admin/index.html"
-  status = 200
-
-[[redirects]]
-  from = "/admin"
-  to = "/admin/index.html"
-  status = 200
 
 # Route /api/* requests directly to Express Netlify Function
 [[redirects]]
