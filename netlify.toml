@@ -5,7 +5,10 @@
 
 [functions]
   node_bundler = "esbuild"
-  included_files = ["backend/**"]
+  # esbuild bundles the backend code imported by the function, so backend/**
+  # (and its node_modules) must not be copied in wholesale. mongodb-memory-server
+  # is a local-dev fallback that ships a full MongoDB binary; keep it out of the bundle.
+  ignored_node_modules = ["mongodb-memory-server"]
 
 # Route /api/* requests directly to Express Netlify Function
 [[redirects]]
