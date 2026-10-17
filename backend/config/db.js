@@ -3,6 +3,9 @@ const mongoose = require('mongoose');
 let mongodInstance = null;
 
 const connectDB = async () => {
+  if (mongoose.connection.readyState >= 1) {
+    return mongoose.connection;
+  }
   const targetUri = process.env.MONGODB_URI || 'mongodb://127.0.0.1:27017/secure_print_shop';
   try {
     const conn = await mongoose.connect(targetUri, {

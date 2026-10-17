@@ -35,9 +35,15 @@ router.get('/pending-jobs', async (req, res) => {
 // Download raw document payload for direct physical printing
 router.get('/download/:docId', async (req, res) => {
   try {
-    const doc = await Document.findById(req.params.docId);
+    const doc = await Document.findById(req.params.docId).select('+fileData');
     if (!doc || doc.deletedAt) {
       return res.status(404).json({ success: false, message: 'Document not found or expired' });
+    }
+
+    if (doc.fileData && doc.fileData.length > 0) {
+      res.setHeader('Content-Disposition', `attachment; filename="${doc.originalFileName || 'document.pdf'}"`);
+      res.setHeader('Content-Type', doc.fileType === 'pdf' ? 'application/pdf' : 'application/octet-stream');
+      return res.send(doc.fileData);
     }
 
     const absolutePath = path.isAbsolute(doc.storageKey)

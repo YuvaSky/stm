@@ -459,9 +459,19 @@ router.post('/create-order', protect, async (req, res) => {
     });
 
     // Process Documents & Settings
-    const orderDir = path.join(__dirname, `../uploads/private/orders/${order.publicOrderId}`);
-    if (!fs.existsSync(orderDir)) {
-      fs.mkdirSync(orderDir, { recursive: true });
+    const os = require('os');
+    let orderDir;
+    try {
+      const localOrderDir = path.join(__dirname, `../uploads/private/orders/${order.publicOrderId}`);
+      if (!fs.existsSync(localOrderDir)) {
+        fs.mkdirSync(localOrderDir, { recursive: true });
+      }
+      orderDir = localOrderDir;
+    } catch (_) {
+      orderDir = path.join(os.tmpdir(), `orders_${order.publicOrderId}`);
+      if (!fs.existsSync(orderDir)) {
+        fs.mkdirSync(orderDir, { recursive: true });
+      }
     }
 
     const createdDocs = [];
@@ -473,6 +483,8 @@ router.post('/create-order', protect, async (req, res) => {
       const actualPrintPages = selectedPages.length;
 
       let finalStorageKey = item.tempPath;
+      let fileBuffer = null;
+
       if (item.tempPath && fs.existsSync(item.tempPath)) {
         const targetPath = path.join(orderDir, path.basename(item.tempPath));
 
@@ -487,13 +499,24 @@ router.post('/create-order', protect, async (req, res) => {
             copiedPages.forEach(p => slicedDoc.addPage(p));
             const slicedBytes = await slicedDoc.save();
             fs.writeFileSync(targetPath, slicedBytes);
+            fileBuffer = Buffer.from(slicedBytes);
             try { fs.unlinkSync(item.tempPath); } catch (_) {}
           } catch (sliceErr) {
             console.warn('[PDF Slicing Error, using full document]:', sliceErr.message);
-            fs.renameSync(item.tempPath, targetPath);
+            try {
+              fs.renameSync(item.tempPath, targetPath);
+            } catch (_) {
+              fs.copyFileSync(item.tempPath, targetPath);
+            }
+            if (fs.existsSync(targetPath)) fileBuffer = fs.readFileSync(targetPath);
           }
         } else {
-          fs.renameSync(item.tempPath, targetPath);
+          try {
+            fs.renameSync(item.tempPath, targetPath);
+          } catch (_) {
+            fs.copyFileSync(item.tempPath, targetPath);
+          }
+          if (fs.existsSync(targetPath)) fileBuffer = fs.readFileSync(targetPath);
         }
 
         finalStorageKey = `uploads/private/orders/${order.publicOrderId}/${path.basename(item.tempPath)}`;
@@ -507,7 +530,8 @@ router.post('/create-order', protect, async (req, res) => {
         sourceType: item.sourceType || 'UPLOAD',
         fileSize: item.fileSize || 1024,
         pageCount: actualPrintPages,
-        storageKey: finalStorageKey || item.fileUrl || `uploads/private/orders/${order.publicOrderId}/${item.originalFileName || 'document.pdf'}`
+        storageKey: finalStorageKey || item.fileUrl || `uploads/private/orders/${order.publicOrderId}/${item.originalFileName || 'document.pdf'}`,
+        fileData: fileBuffer
       });
 
       await PrintSetting.create({

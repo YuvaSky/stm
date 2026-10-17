@@ -425,9 +425,18 @@ export default function ShopkeeperDashboard({ setCurrentView }) {
     }
   };
 
-  // Real-time queue and agent sync via Socket.io
+  // Real-time queue and agent sync via Socket.io + auto-polling fallback for serverless
   useEffect(() => {
-    if (!socket) return;
+    fetchQueue();
+
+    // Auto-poll every 4s so serverless deployments (Netlify) receive orders without persistent WebSockets
+    const pollInterval = setInterval(() => {
+      fetchQueue();
+    }, 4000);
+
+    if (!socket) {
+      return () => clearInterval(pollInterval);
+    }
 
     socket.on('new_order_queued', () => {
       fetchQueue();
@@ -456,6 +465,7 @@ export default function ShopkeeperDashboard({ setCurrentView }) {
     });
 
     return () => {
+      clearInterval(pollInterval);
       socket.off('new_order_queued');
       socket.off('order_status_updated');
       socket.off('agent_status');

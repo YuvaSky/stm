@@ -13,6 +13,7 @@ const documentSchema = new mongoose.Schema({
   fileSize: { type: Number, required: true },
   pageCount: { type: Number, default: 1 },
   storageKey: { type: String, required: true }, // private relative file path
+  fileData: { type: Buffer, select: false }, // Direct buffer for serverless cloud storage (MongoDB Atlas)
   deletedAt: { type: Date, default: null }
 }, { timestamps: true });
 

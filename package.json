@@ -19,5 +19,8 @@
     "secure-handover"
   ],
   "author": "Antigravity",
-  "license": "ISC"
+  "license": "ISC",
+  "dependencies": {
+    "serverless-http": "^4.0.0"
+  }
 }

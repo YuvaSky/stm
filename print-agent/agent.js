@@ -141,16 +141,16 @@ socket.on('agent_test_print', (testData) => {
   console.log('====================================================\n');
 });
 
-// Listen for Print Jobs dispatched from Shopkeeper Dashboard
-socket.on('agent_print_job', async (jobData) => {
+// Reusable job handler for both WebSocket events & HTTP polling (Netlify Serverless)
+async function handlePrintJob(jobData) {
   console.log('\n====================================================');
-  console.log(`⚡ [NEW PHYSICAL PRINT JOB RECEIVED]: ${jobData.publicOrderId}`);
+  console.log(`⚡ [PHYSICAL PRINT JOB RECEIVED]: ${jobData.publicOrderId}`);
   console.log(`Print Job ID: ${jobData.printJobId}`);
   console.log(`Documents count: ${jobData.documents ? jobData.documents.length : 0}`);
   console.log('====================================================');
 
   try {
-    for (const doc of jobData.documents) {
+    for (const doc of (jobData.documents || [])) {
       if (abortedPrintJobs.has(String(jobData.printJobId))) {
         console.log(`⚠️ [PRINT ABORTED]: Skipping remaining documents for ${jobData.publicOrderId}`);
         abortedPrintJobs.delete(String(jobData.printJobId));
@@ -215,7 +215,40 @@ socket.on('agent_print_job', async (jobData) => {
       console.error('Failed to report job status:', reportErr.message);
     }
   }
-});
+}
+
+// Listen for Print Jobs dispatched via Socket.io
+socket.on('agent_print_job', handlePrintJob);
+
+// Active Job Polling fallback (Ensures jobs are processed on Netlify Serverless)
+const processedJobIds = new Set();
+async function pollPendingPrintJobs() {
+  try {
+    const res = await axios.get(`${SERVER_URL}/api/agent/pending-jobs`, {
+      headers: { 'x-agent-secret': AGENT_SECRET },
+      timeout: 5000
+    });
+    if (res.data && res.data.success && Array.isArray(res.data.jobs)) {
+      for (const job of res.data.jobs) {
+        const jId = String(job._id);
+        if (!processedJobIds.has(jId)) {
+          processedJobIds.add(jId);
+          await handlePrintJob({
+            printJobId: job._id,
+            publicOrderId: job.orderId?.publicOrderId || jId.slice(-6),
+            printerName: job.printerId?.name || 'Default',
+            documents: (job.documents || []).map(d => ({
+              id: d._id || d,
+              name: d.originalFileName || 'document.pdf'
+            }))
+          });
+        }
+      }
+    }
+  } catch (_) {}
+}
+
+setInterval(pollPendingPrintJobs, 4000);
 
 // Helper executing background Windows/OS print command
 async function printDocumentToPrinter(filePath, jobData) {

@@ -1,22 +1,8 @@
-const express = require('express');
 const http = require('http');
 const { Server } = require('socket.io');
-const cors = require('cors');
-const path = require('path');
-const dotenv = require('dotenv');
-
-dotenv.config();
-
-const connectDB = require('./config/db');
+const app = require('./app');
 const initRetentionCleaner = require('./utils/retentionCleaner');
 
-const authRoutes = require('./routes/auth');
-const customerRoutes = require('./routes/customer');
-const shopkeeperRoutes = require('./routes/shopkeeper');
-const agentRoutes = require('./routes/agent');
-const adminRoutes = require('./routes/admin');
-
-const app = express();
 const server = http.createServer(app);
 
 // Socket.io for Real-time print queue and Local Print Agent connection
@@ -30,62 +16,8 @@ const io = new Server(server, {
 // Attach io instance to app for routes
 app.set('io', io);
 
-// Connect Database & Ensure Seed Developer Account
-connectDB().then(async () => {
-  try {
-    const User = require('./models/User');
-    const bcrypt = require('bcryptjs');
-    const existingDev = await User.findOne({ mobile: '8766341212' });
-    if (!existingDev) {
-      const salt = await bcrypt.genSalt(10);
-      const passwordHash = await bcrypt.hash('admin@secureprint', salt);
-      await User.create({
-        name: 'System Developer Admin',
-        mobile: '8766341212',
-        email: 'developer@secureprint.com',
-        passwordHash,
-        role: 'DEVELOPER'
-      });
-      console.log('✅ Default Developer Account created: 8766341212 / admin@secureprint');
-    }
-  } catch (err) {
-    console.error('Seed dev error:', err.message);
-  }
-});
-
 // Init Background Retention Cleaner Cron
 initRetentionCleaner();
-
-// Middleware
-app.use(cors());
-app.use(express.json());
-app.use(express.urlencoded({ extended: true }));
-
-// Detailed Terminal Logger Middleware
-app.use((req, res, next) => {
-  const timestamp = new Date().toLocaleTimeString();
-  console.log(`\x1b[36m[${timestamp}] ${req.method} ${req.originalUrl}\x1b[0m`);
-  next();
-});
-
-// Serve API Routes
-app.use('/api/auth', authRoutes);
-app.use('/api/customer', customerRoutes);
-app.use('/api/shopkeeper', shopkeeperRoutes);
-app.use('/api/agent', agentRoutes);
-app.use('/api/admin', adminRoutes);
-
-// Serve static uploads if needed
-app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
-
-// Health check endpoint
-app.get('/api/health', (req, res) => {
-  res.json({
-    status: 'ONLINE',
-    service: 'Secure Print & Photocopy Shop System API',
-    timestamp: new Date()
-  });
-});
 
 // Active Local Print Agent Registry
 const activeAgents = new Map();
