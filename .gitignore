@@ -5,6 +5,8 @@ node_modules/
 # Production build outputs
 dist/
 **/dist/
+.netlify/
+**/.netlify/
 
 # Environment files
 .env

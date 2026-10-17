@@ -7,7 +7,8 @@
     "dev": "vite --port 3003 --host",
     "build": "vite build",
     "lint": "eslint .",
-    "preview": "vite preview"
+    "preview": "vite preview",
+    "deploy": "vite build && netlify deploy --prod --dir=dist --no-build"
   },
   "dependencies": {
     "axios": "^1.6.8",
