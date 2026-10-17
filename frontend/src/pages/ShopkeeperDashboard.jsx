@@ -789,7 +789,7 @@ export default function ShopkeeperDashboard({ setCurrentView }) {
     printWindow.document.close();
   };
 
-  if (unauthorized) {
+  if (unauthorized || !user) {
     return (
       <div className="max-w-xl mx-auto my-8 px-4 sm:my-10 space-y-4">
         {/* Main Auth Card */}
@@ -869,17 +869,20 @@ export default function ShopkeeperDashboard({ setCurrentView }) {
                   {loading ? 'SIGNING IN...' : 'SIGN IN TO SHOP DASHBOARD'}
                 </button>
 
-                <div className="pt-2 flex items-center justify-between text-xs border-t border-slate-100">
-                  <div className="flex items-center gap-1.5 text-[11px] text-slate-500 font-semibold">
-                    <Shield className="w-3.5 h-3.5 text-blue-600 shrink-0" />
-                    <span>New shops are provisioned by System Admins only</span>
-                  </div>
+                <div className="pt-2.5 flex items-center justify-between text-xs border-t border-slate-100 flex-wrap gap-2">
                   <button
                     type="button"
                     onClick={handleAutoLoginStaff}
-                    className="text-[11px] text-slate-400 hover:text-slate-600 font-medium cursor-pointer"
+                    className="text-[11px] text-blue-600 hover:text-blue-800 font-bold cursor-pointer"
                   >
-                    Quick Staff Demo
+                    ⚡ Quick Staff Demo (8888888888)
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setCurrentView && setCurrentView('admin')}
+                    className="text-[11px] text-purple-600 hover:text-purple-800 font-bold cursor-pointer"
+                  >
+                    Go to Admin Portal →
                   </button>
                 </div>
               </form>
@@ -985,6 +988,8 @@ export default function ShopkeeperDashboard({ setCurrentView }) {
               onClick={() => {
                 if (window.confirm('Are you sure you want to sign out of Shopkeeper Portal?')) {
                   logout();
+                  setUnauthorized(true);
+                  setQueue([]);
                   if (setCurrentView) setCurrentView('shopkeeper');
                 }
               }}

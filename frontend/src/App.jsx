@@ -64,11 +64,18 @@ function MainApp() {
     return () => window.removeEventListener('popstate', handlePopState);
   }, []);
 
+  const navigateToView = (viewName) => {
+    setCurrentView(viewName);
+    const url = new URL(window.location.href);
+    url.searchParams.set('portal', viewName);
+    window.history.pushState({}, '', url.toString());
+  };
+
   // Separate Standalone Developer Portal Page
   if (currentView === 'developer') {
     return (
       <div className="min-h-screen bg-slate-950 font-['Plus_Jakarta_Sans',sans-serif]">
-        <DeveloperAdminPortal setCurrentView={setCurrentView} />
+        <DeveloperAdminPortal setCurrentView={navigateToView} />
       </div>
     );
   }
@@ -77,7 +84,7 @@ function MainApp() {
   if (currentView === 'admin') {
     return (
       <div className="min-h-screen bg-slate-950 font-['Plus_Jakarta_Sans',sans-serif]">
-        <AdminPortal setCurrentView={setCurrentView} />
+        <AdminPortal setCurrentView={navigateToView} />
       </div>
     );
   }
@@ -86,16 +93,16 @@ function MainApp() {
     <div className="min-h-screen bg-slate-50 text-slate-800 flex flex-col font-['Plus_Jakarta_Sans',sans-serif]">
       
       {/* Top Navigation Bar */}
-      <Navbar currentView={currentView} setCurrentView={setCurrentView} />
+      <Navbar currentView={currentView} setCurrentView={navigateToView} />
 
       {/* Main View Container */}
       <main className="flex-1 bg-slate-50">
-        {currentView === 'customer' && <CustomerApp setCurrentView={setCurrentView} />}
-        {currentView === 'shopkeeper' && <ShopkeeperDashboard setCurrentView={setCurrentView} />}
+        {currentView === 'customer' && <CustomerApp setCurrentView={navigateToView} />}
+        {currentView === 'shopkeeper' && <ShopkeeperDashboard setCurrentView={navigateToView} />}
       </main>
 
       {/* Professional Footer */}
-      <Footer currentView={currentView} setCurrentView={setCurrentView} />
+      <Footer currentView={currentView} setCurrentView={navigateToView} />
 
     </div>
   );

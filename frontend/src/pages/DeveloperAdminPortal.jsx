@@ -313,7 +313,11 @@ export default function DeveloperAdminPortal({ setCurrentView }) {
               onClick={async () => {
                 setLoginError('');
                 try {
-                  await login('7777777777', 'developer123');
+                  try {
+                    await login('8766341212', 'admin@secureprint');
+                  } catch (_) {
+                    await login('7777777777', 'developer123');
+                  }
                   setUnauthorized(false);
                   fetchAnalytics();
                   fetchUsers();
@@ -325,21 +329,28 @@ export default function DeveloperAdminPortal({ setCurrentView }) {
                   setLoginError('Developer login failed: ' + err.message);
                 }
               }}
-              className="w-full py-3 bg-slate-950 hover:bg-slate-800 text-cyan-400 font-bold text-xs rounded-xl border border-cyan-500/20 transition-all text-center flex items-center justify-center gap-2"
+              className="w-full py-3 bg-slate-950 hover:bg-slate-800 text-cyan-400 font-bold text-xs rounded-xl border border-cyan-500/20 transition-all text-center flex items-center justify-center gap-2 cursor-pointer"
             >
               <span>⚡ One-Click Developer Key Login</span>
-              <span className="text-[10px] text-slate-400">(7777777777)</span>
+              <span className="text-[10px] text-slate-400">(8766341212)</span>
             </button>
           </form>
 
-          <div className="pt-2 text-center border-t border-slate-800">
+          <div className="pt-2 text-center border-t border-slate-800 flex justify-between text-xs">
+            <button
+              type="button"
+              onClick={() => setCurrentView && setCurrentView('shopkeeper')}
+              className="font-semibold text-slate-400 hover:text-white transition-colors inline-flex items-center gap-1.5 cursor-pointer"
+            >
+              <ArrowLeft className="w-4 h-4" />
+              Exit to Shop Counter
+            </button>
             <button
               type="button"
               onClick={() => setCurrentView && setCurrentView('customer')}
-              className="text-xs font-semibold text-slate-400 hover:text-white transition-colors inline-flex items-center gap-1.5"
+              className="font-semibold text-cyan-400 hover:text-cyan-300 transition-colors inline-flex items-center gap-1.5 cursor-pointer"
             >
-              <ArrowLeft className="w-4 h-4" />
-              Exit to Main Store App
+              Customer Upload →
             </button>
           </div>
         </div>

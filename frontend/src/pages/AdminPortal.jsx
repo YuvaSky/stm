@@ -353,10 +353,50 @@ export default function AdminPortal({ setCurrentView }) {
 
             <button
               type="submit"
-              className="w-full py-3.5 bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-500 hover:to-indigo-500 text-white font-black text-xs rounded-xl shadow-lg transition-all active:scale-95 uppercase tracking-wider"
+              className="w-full py-3.5 bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-500 hover:to-indigo-500 text-white font-black text-xs rounded-xl shadow-lg transition-all active:scale-95 uppercase tracking-wider cursor-pointer"
             >
               Sign In To Admin Portal
             </button>
+
+            {/* Quick Demo Credentials */}
+            <div className="pt-2 border-t border-slate-800 space-y-2">
+              <p className="text-[10px] text-slate-400 font-bold uppercase tracking-wider text-center">Quick Admin Test Logins</p>
+              <div className="grid grid-cols-2 gap-2">
+                <button
+                  type="button"
+                  onClick={() => { setLoginMobile('9999999999'); setLoginPassword('admin123'); }}
+                  className="p-2 bg-slate-900 hover:bg-slate-800 border border-slate-700 rounded-xl text-left text-[11px] cursor-pointer"
+                >
+                  <p className="font-bold text-purple-300">Super Admin</p>
+                  <p className="text-[10px] text-slate-400 font-mono">9999999999</p>
+                </button>
+                <button
+                  type="button"
+                  onClick={() => { setLoginMobile('8766341212'); setLoginPassword('admin@secureprint'); }}
+                  className="p-2 bg-slate-900 hover:bg-slate-800 border border-slate-700 rounded-xl text-left text-[11px] cursor-pointer"
+                >
+                  <p className="font-bold text-cyan-300">Developer Root</p>
+                  <p className="text-[10px] text-slate-400 font-mono">8766341212</p>
+                </button>
+              </div>
+            </div>
+
+            <div className="pt-2 flex items-center justify-between text-xs border-t border-slate-800">
+              <button
+                type="button"
+                onClick={() => setCurrentView && setCurrentView('shopkeeper')}
+                className="text-slate-400 hover:text-white transition-colors cursor-pointer"
+              >
+                ← Return to Counter
+              </button>
+              <button
+                type="button"
+                onClick={() => setCurrentView && setCurrentView('customer')}
+                className="text-cyan-400 hover:text-cyan-300 transition-colors cursor-pointer"
+              >
+                Customer Upload →
+              </button>
+            </div>
           </form>
         </div>
       </div>
@@ -384,6 +424,14 @@ export default function AdminPortal({ setCurrentView }) {
         </div>
 
         <div className="flex items-center space-x-2">
+          <button
+            onClick={() => setCurrentView('shopkeeper')}
+            className="px-3 py-2 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-200 font-bold text-xs border border-slate-700 flex items-center gap-1.5 transition-all cursor-pointer"
+          >
+            <ArrowLeft className="w-4 h-4 text-cyan-400" />
+            <span className="hidden sm:inline">Shop Counter</span>
+          </button>
+
           <button
             onClick={() => {
               setNewUser({ name: '', mobile: '', email: '', password: '', role: 'STAFF', shopName: '', address: '' });
@@ -419,9 +467,15 @@ export default function AdminPortal({ setCurrentView }) {
               <span className="text-[9px] text-purple-400 font-semibold uppercase">{user?.role}</span>
             </div>
             <button
-              onClick={() => { logout(); setCurrentView('customer'); }}
+              onClick={() => {
+                if (window.confirm('Sign out of Admin Portal?')) {
+                  logout();
+                  setUnauthorized(true);
+                  setCurrentView('shopkeeper');
+                }
+              }}
               title="Sign out of Admin Portal"
-              className="ml-1 text-slate-400 hover:text-rose-400 transition-colors p-1"
+              className="ml-1 text-slate-400 hover:text-rose-400 transition-colors p-1 cursor-pointer"
             >
               <LogOut className="w-4 h-4" />
             </button>
