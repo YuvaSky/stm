@@ -5,7 +5,7 @@
 
 [functions]
   node_bundler = "esbuild"
-  included_files = ["backend/**"]
+  external_node_modules = ["mongodb-memory-server"]
 
 # Route /api/* requests directly to Express Netlify Function
 [[redirects]]

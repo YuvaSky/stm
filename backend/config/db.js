@@ -14,14 +14,15 @@ const connectDB = async () => {
     console.log(`[MongoDB Connected]: ${conn.connection.host}/${conn.connection.name}`);
     return conn;
   } catch (error) {
-    if (process.env.MONGODB_URI) {
-      console.error(`[MongoDB Connection Error]: ${error.message}`);
-      process.exit(1);
+    if (process.env.NETLIFY || process.env.NODE_ENV === 'production') {
+      console.error(`[MongoDB Connection Error]: MONGODB_URI is required in production: ${error.message}`);
+      throw error;
     }
     console.log(`[MongoDB]: Local MongoDB is not running (127.0.0.1:27017).`);
     console.log(`[MongoDB]: Starting embedded in-memory MongoDB server...`);
     try {
-      const { MongoMemoryServer } = require('mongodb-memory-server');
+      const memPkg = 'mongodb-memory-server';
+      const { MongoMemoryServer } = require(memPkg);
       mongodInstance = await MongoMemoryServer.create({
         instance: { dbName: 'secure_print_shop' }
       });
