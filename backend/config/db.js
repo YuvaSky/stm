@@ -14,8 +14,9 @@ const connectDB = async () => {
     console.log(`[MongoDB Connected]: ${conn.connection.host}/${conn.connection.name}`);
     return conn;
   } catch (error) {
-    if (process.env.NETLIFY || process.env.NODE_ENV === 'production') {
-      console.error(`[MongoDB Connection Error]: MONGODB_URI is required in production: ${error.message}`);
+    const isServerlessOrProd = process.env.NETLIFY || process.env.AWS_LAMBDA_FUNCTION_NAME || process.env.NODE_ENV === 'production';
+    if (isServerlessOrProd) {
+      console.error(`[MongoDB Connection Error]: MONGODB_URI is required or unreachable in production: ${error.message}`);
       throw error;
     }
     console.log(`[MongoDB]: Local MongoDB is not running (127.0.0.1:27017).`);
@@ -41,7 +42,7 @@ const connectDB = async () => {
       return conn;
     } catch (memErr) {
       console.error(`[MongoDB Connection Error]: ${memErr.message}`);
-      process.exit(1);
+      throw memErr;
     }
   }
 };

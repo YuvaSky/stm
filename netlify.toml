@@ -3,6 +3,13 @@
   publish = "frontend/dist"
   functions = "netlify/functions"
 
+[build.environment]
+  NODE_ENV = "production"
+  NETLIFY = "true"
+  JWT_SECRET = "super_secret_secure_print_key_2026_antigravity"
+  AGENT_SECRET = "agent_secret_token_876634"
+  RETENTION_MINUTES = "60"
+
 [functions]
   node_bundler = "esbuild"
   external_node_modules = ["mongodb-memory-server"]
