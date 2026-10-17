@@ -14,6 +14,20 @@
   node_bundler = "esbuild"
   external_node_modules = ["mongodb-memory-server"]
 
+[[headers]]
+  for = "/api/*"
+  [headers.values]
+    Access-Control-Allow-Origin = "*"
+    Access-Control-Allow-Methods = "GET, POST, PUT, DELETE, PATCH, OPTIONS"
+    Access-Control-Allow-Headers = "Content-Type, Authorization, x-agent-secret, Origin, Accept, X-Requested-With"
+
+[[headers]]
+  for = "/.netlify/functions/*"
+  [headers.values]
+    Access-Control-Allow-Origin = "*"
+    Access-Control-Allow-Methods = "GET, POST, PUT, DELETE, PATCH, OPTIONS"
+    Access-Control-Allow-Headers = "Content-Type, Authorization, x-agent-secret, Origin, Accept, X-Requested-With"
+
 # Route /api/* requests directly to Express Netlify Function
 [[redirects]]
   from = "/api/*"
