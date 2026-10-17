@@ -3,9 +3,16 @@
   publish = "frontend/dist"
   functions = "netlify/functions"
 
+[build.environment]
+  # Skip downloading the embedded MongoDB binary (hundreds of MB) during npm install;
+  # it is only a local-dev fallback and can't run inside a Netlify Function.
+  MONGOMS_DISABLE_POSTINSTALL = "1"
+
 [functions]
   node_bundler = "esbuild"
-  included_files = ["backend/**"]
+  # esbuild already bundles the backend code and its dependencies; only ship
+  # backend source files, never its node_modules or local uploads.
+  included_files = ["backend/**", "!backend/node_modules/**", "!backend/uploads/**"]
 
 # Route /api/* requests directly to Express Netlify Function
 [[redirects]]
