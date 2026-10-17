@@ -512,18 +512,6 @@ export default function ShopkeeperDashboard({ setCurrentView }) {
     }
   };
 
-  const handleAutoLoginStaff = async () => {
-    setLoginError('');
-    try {
-      await login('8888888888', 'admin123');
-      setUnauthorized(false);
-      fetchQueue();
-      fetchShopDetails();
-    } catch (err) {
-      setLoginError('Staff login failed: ' + (err.response?.data?.message || err.message));
-    }
-  };
-
   const handleQrScanned = async (scannedToken) => {
     setLoading(true);
     setActionMessage('');
@@ -868,19 +856,6 @@ export default function ShopkeeperDashboard({ setCurrentView }) {
                 >
                   {loading ? 'SIGNING IN...' : 'SIGN IN TO SHOP DASHBOARD'}
                 </button>
-
-                <div className="pt-2.5 flex items-center justify-between text-xs border-t border-slate-100 flex-wrap gap-2">
-                  <button
-                    type="button"
-                    onClick={handleAutoLoginStaff}
-                    className="text-[11px] text-blue-600 hover:text-blue-800 font-bold cursor-pointer"
-                  >
-                    ⚡ Quick Staff Demo (8888888888)
-                  </button>
-                  <span className="text-[11px] text-slate-400">
-                    Counter Desk • Operator Only
-                  </span>
-                </div>
               </form>
             ) : (
               /* ADMIN ACCESS ONLY NOTICE */

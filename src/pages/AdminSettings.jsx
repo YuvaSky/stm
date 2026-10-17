@@ -234,27 +234,6 @@ export default function AdminSettings({ setCurrentView }) {
           >
             SIGN IN TO ADMIN CONFIG
           </button>
-
-          <button
-            type="button"
-            onClick={async () => {
-              setLoginError('');
-              try {
-                await login('9999999999', 'admin123');
-                setUnauthorized(false);
-                fetchSettings();
-                fetchPrinters();
-                fetchAuditLogs();
-                fetchStaff();
-              } catch (err) {
-                setLoginError('Admin login failed: ' + err.message);
-              }
-            }}
-            className="w-full py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold text-xs rounded-xl border border-slate-200 transition-all text-center flex items-center justify-center gap-1.5"
-          >
-            <span>⚡ One-Click Demo Admin Login</span>
-            <span className="text-[10px] text-slate-500 font-normal">(9999999999)</span>
-          </button>
         </form>
 
         <div className="pt-2 text-center border-t border-slate-100">

@@ -217,17 +217,6 @@ export default function ShopkeeperDashboard({ setCurrentView }) {
     }
   };
 
-  const handleAutoLoginStaff = async () => {
-    setLoginError('');
-    try {
-      await login('8888888888', 'admin123');
-      setUnauthorized(false);
-      fetchQueue();
-    } catch (err) {
-      setLoginError('Staff login failed: ' + (err.response?.data?.message || err.message));
-    }
-  };
-
   const handleQrScanned = async (scannedToken) => {
     setLoading(true);
     setActionMessage('');
@@ -367,21 +356,6 @@ export default function ShopkeeperDashboard({ setCurrentView }) {
             className="w-full py-2.5 bg-blue-600 hover:bg-blue-500 text-white font-extrabold text-xs rounded-xl shadow-xs transition-all mt-2"
           >
             SIGN IN TO DASHBOARD
-          </button>
-
-          <div className="relative flex py-1 items-center">
-            <div className="flex-grow border-t border-slate-200"></div>
-            <span className="flex-shrink mx-2 text-[10px] text-slate-400 font-semibold uppercase">or</span>
-            <div className="flex-grow border-t border-slate-200"></div>
-          </div>
-
-          <button
-            type="button"
-            onClick={handleAutoLoginStaff}
-            className="w-full py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold text-xs rounded-xl border border-slate-200 transition-all text-center flex items-center justify-center gap-1.5"
-          >
-            <span>⚡ One-Click Demo Staff Login</span>
-            <span className="text-[10px] text-slate-500 font-normal">(8888888888)</span>
           </button>
         </form>
 

@@ -56,28 +56,7 @@ let isDbConnecting = null;
 app.use(async (req, res, next) => {
   try {
     if (!isDbConnecting) {
-      isDbConnecting = connectDB().then(async (conn) => {
-        try {
-          const User = require('./models/User');
-          const bcrypt = require('bcryptjs');
-          const existingDev = await User.findOne({ mobile: '8766341212' });
-          if (!existingDev) {
-            const salt = await bcrypt.genSalt(10);
-            const passwordHash = await bcrypt.hash('admin@secureprint', salt);
-            await User.create({
-              name: 'System Developer Admin',
-              mobile: '8766341212',
-              email: 'developer@secureprint.com',
-              passwordHash,
-              role: 'DEVELOPER'
-            });
-            console.log('✅ Default Developer Account created: 8766341212 / admin@secureprint');
-          }
-        } catch (seedErr) {
-          console.error('Seed dev error:', seedErr.message);
-        }
-        return conn;
-      }).catch(err => {
+      isDbConnecting = connectDB().catch(err => {
         isDbConnecting = null; // allow next request to retry
         throw err;
       });

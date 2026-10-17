@@ -358,29 +358,6 @@ export default function AdminPortal({ setCurrentView }) {
               Sign In To Admin Portal
             </button>
 
-            {/* Quick Demo Credentials */}
-            <div className="pt-2 border-t border-slate-800 space-y-2">
-              <p className="text-[10px] text-slate-400 font-bold uppercase tracking-wider text-center">Quick Admin Test Logins</p>
-              <div className="grid grid-cols-2 gap-2">
-                <button
-                  type="button"
-                  onClick={() => { setLoginMobile('9999999999'); setLoginPassword('admin123'); }}
-                  className="p-2 bg-slate-900 hover:bg-slate-800 border border-slate-700 rounded-xl text-left text-[11px] cursor-pointer"
-                >
-                  <p className="font-bold text-purple-300">Super Admin</p>
-                  <p className="text-[10px] text-slate-400 font-mono">9999999999</p>
-                </button>
-                <button
-                  type="button"
-                  onClick={() => { setLoginMobile('8766341212'); setLoginPassword('admin@secureprint'); }}
-                  className="p-2 bg-slate-900 hover:bg-slate-800 border border-slate-700 rounded-xl text-left text-[11px] cursor-pointer"
-                >
-                  <p className="font-bold text-cyan-300">Developer Root</p>
-                  <p className="text-[10px] text-slate-400 font-mono">8766341212</p>
-                </button>
-              </div>
-            </div>
-
             <div className="pt-2 flex items-center justify-between text-xs border-t border-slate-800">
               <button
                 type="button"
