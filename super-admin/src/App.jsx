@@ -2,9 +2,9 @@ import React from 'react';
 import axios from 'axios';
 import SuperAdminConsole from './pages/SuperAdminConsole';
 
-if (import.meta.env.VITE_API_URL) {
-  axios.defaults.baseURL = import.meta.env.VITE_API_URL;
-}
+const API_BASE = import.meta.env.VITE_API_URL || 
+  (window.location.hostname === 'localhost' ? 'http://localhost:5000' : 'https://secure-print-application.netlify.app');
+axios.defaults.baseURL = API_BASE;
 
 export default function App() {
   return (

@@ -877,13 +877,9 @@ export default function ShopkeeperDashboard({ setCurrentView }) {
                   >
                     ⚡ Quick Staff Demo (8888888888)
                   </button>
-                  <button
-                    type="button"
-                    onClick={() => setCurrentView && setCurrentView('admin')}
-                    className="text-[11px] text-purple-600 hover:text-purple-800 font-bold cursor-pointer"
-                  >
-                    Go to Admin Portal →
-                  </button>
+                  <span className="text-[11px] text-slate-400">
+                    Counter Desk • Operator Only
+                  </span>
                 </div>
               </form>
             ) : (

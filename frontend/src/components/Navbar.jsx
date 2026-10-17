@@ -59,7 +59,7 @@ export default function Navbar({ currentView, setCurrentView }) {
             </div>
           </div>
 
-          {/* Universal Portal Navigator Pills (Always Accessible) */}
+          {/* Customer & Shop Counter Switcher */}
           <div className="hidden md:flex items-center space-x-1.5 bg-slate-100/90 p-1 rounded-2xl border border-slate-200 text-xs font-bold">
             <button
               onClick={() => setCurrentView('customer')}
@@ -85,29 +85,19 @@ export default function Navbar({ currentView, setCurrentView }) {
               <span>Shop Counter</span>
             </button>
 
-            <button
-              onClick={() => setCurrentView('admin')}
-              className={`flex items-center gap-1.5 px-3 py-1.5 rounded-xl transition-all cursor-pointer ${
-                currentView === 'admin'
-                  ? 'bg-purple-600 text-white shadow-sm shadow-purple-600/30'
-                  : 'text-slate-600 hover:text-slate-900 hover:bg-white/60'
-              }`}
-            >
-              <Shield className="w-3.5 h-3.5" />
-              <span>Admin Panel</span>
-            </button>
-
-            <button
-              onClick={() => setCurrentView('developer')}
-              className={`flex items-center gap-1.5 px-3 py-1.5 rounded-xl transition-all cursor-pointer ${
-                currentView === 'developer'
-                  ? 'bg-slate-900 text-cyan-300 shadow-sm'
-                  : 'text-slate-600 hover:text-slate-900 hover:bg-white/60'
-              }`}
-            >
-              <Cpu className="w-3.5 h-3.5" />
-              <span>Dev Root</span>
-            </button>
+            {user && ['ADMIN', 'MANAGER', 'DEVELOPER'].includes(user?.role) && (
+              <button
+                onClick={() => setCurrentView('admin')}
+                className={`flex items-center gap-1.5 px-3 py-1.5 rounded-xl transition-all cursor-pointer ${
+                  currentView === 'admin'
+                    ? 'bg-purple-600 text-white shadow-sm shadow-purple-600/30'
+                    : 'text-purple-700 hover:text-purple-900 hover:bg-purple-50'
+                }`}
+              >
+                <Shield className="w-3.5 h-3.5" />
+                <span>Admin Console</span>
+              </button>
+            )}
           </div>
 
           {/* Right Action / Profile with Working Logout */}
@@ -185,20 +175,15 @@ export default function Navbar({ currentView, setCurrentView }) {
                 <Store className="w-4 h-4" />
                 <span>Shop Counter</span>
               </button>
-              <button
-                onClick={() => { setCurrentView('admin'); setMobileMenuOpen(false); }}
-                className={`p-2.5 rounded-xl border flex items-center gap-2 ${currentView === 'admin' ? 'bg-purple-600 text-white border-purple-600' : 'bg-slate-50 text-slate-700 border-slate-200'}`}
-              >
-                <Shield className="w-4 h-4" />
-                <span>Admin Panel</span>
-              </button>
-              <button
-                onClick={() => { setCurrentView('developer'); setMobileMenuOpen(false); }}
-                className={`p-2.5 rounded-xl border flex items-center gap-2 ${currentView === 'developer' ? 'bg-slate-900 text-cyan-300 border-slate-900' : 'bg-slate-50 text-slate-700 border-slate-200'}`}
-              >
-                <Cpu className="w-4 h-4" />
-                <span>Developer Root</span>
-              </button>
+              {user && ['ADMIN', 'MANAGER', 'DEVELOPER'].includes(user?.role) && (
+                <button
+                  onClick={() => { setCurrentView('admin'); setMobileMenuOpen(false); }}
+                  className={`col-span-2 p-2.5 rounded-xl border flex items-center justify-center gap-2 ${currentView === 'admin' ? 'bg-purple-600 text-white border-purple-600' : 'bg-purple-50 text-purple-700 border-purple-200'}`}
+                >
+                  <Shield className="w-4 h-4" />
+                  <span>Admin Console</span>
+                </button>
+              )}
             </div>
 
             {user ? (
