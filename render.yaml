@@ -1,0 +1,21 @@
+services:
+  - type: web
+    name: secureprint-backend
+    env: node
+    plan: free
+    rootDir: backend
+    buildCommand: npm install
+    startCommand: node server.js
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: PORT
+        value: 5000
+      - key: JWT_SECRET
+        generateValue: true
+      - key: AGENT_SECRET
+        value: agent_secret_token_998877
+      - key: RETENTION_MINUTES
+        value: 60
+      - key: MONGODB_URI
+        sync: false

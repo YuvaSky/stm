@@ -35,18 +35,18 @@ connectDB().then(async () => {
   try {
     const User = require('./models/User');
     const bcrypt = require('bcryptjs');
-    const existingDev = await User.findOne({ mobile: '7777777777' });
+    const existingDev = await User.findOne({ mobile: '8766341212' });
     if (!existingDev) {
       const salt = await bcrypt.genSalt(10);
-      const passwordHash = await bcrypt.hash('developer123', salt);
+      const passwordHash = await bcrypt.hash('admin@secureprint', salt);
       await User.create({
         name: 'System Developer Admin',
-        mobile: '7777777777',
+        mobile: '8766341212',
         email: 'developer@secureprint.com',
         passwordHash,
         role: 'DEVELOPER'
       });
-      console.log('✅ Default Developer Account created: 7777777777 / developer123');
+      console.log('✅ Default Developer Account created: 8766341212 / admin@secureprint');
     }
   } catch (err) {
     console.error('Seed dev error:', err.message);

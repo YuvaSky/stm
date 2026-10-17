@@ -7,6 +7,11 @@ import CustomerApp from './pages/CustomerApp';
 import ShopkeeperDashboard from './pages/ShopkeeperDashboard';
 import AdminPortal from './pages/AdminPortal';
 import DeveloperAdminPortal from './pages/DeveloperAdminPortal';
+import axios from 'axios';
+
+if (import.meta.env.VITE_API_URL) {
+  axios.defaults.baseURL = import.meta.env.VITE_API_URL;
+}
 
 function MainApp() {
   const { user } = useAuth();

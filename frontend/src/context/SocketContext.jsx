@@ -8,9 +8,10 @@ export const SocketProvider = ({ children }) => {
   const [connected, setConnected] = useState(false);
 
   useEffect(() => {
-    // Dynamically connect to the host IP (e.g. 192.168.x.x:5000 or localhost:5000)
+    // Connect using configured cloud URL or fallback to local IP:5000
     const host = window.location.hostname || 'localhost';
-    const socketUrl = `http://${host}:5000`;
+    const isLocal = host === 'localhost' || host === '127.0.0.1' || host.startsWith('192.168.') || host.startsWith('10.');
+    const socketUrl = import.meta.env.VITE_SOCKET_URL || (isLocal ? `http://${host}:5000` : window.location.origin);
 
     const newSocket = io(socketUrl, {
       transports: ['polling', 'websocket'],
