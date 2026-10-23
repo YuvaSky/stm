@@ -132,7 +132,7 @@ export default function PrintAgentModal({ isOpen, onClose }) {
   };
 
   const copyRunCommand = () => {
-    const cmd = 'cd c:\\Users\\SumitKumarYadav\\Downloads\\stm\\stm\\print-agent; npm start';
+    const cmd = 'npm run agent';
     navigator.clipboard.writeText(cmd);
     setCopiedCommand(true);
     setTimeout(() => setCopiedCommand(false), 2500);
@@ -284,11 +284,11 @@ export default function PrintAgentModal({ isOpen, onClose }) {
             </div>
 
             <p className="text-xs text-slate-400">
-              Run in a PowerShell terminal on the computer connected to your physical printer:
+              Run in a terminal on the counter PC connected to your printer, or double-click <strong>start-print-agent.bat</strong>:
             </p>
 
             <div className="bg-slate-950 p-3 rounded-xl border border-slate-800 font-mono text-xs text-cyan-300 overflow-x-auto select-all">
-              cd c:\Users\SumitKumarYadav\Downloads\stm\stm\print-agent ; npm start
+              npm run agent
             </div>
 
             <div className="pt-2 flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3 border-t border-slate-800/80">

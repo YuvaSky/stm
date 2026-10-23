@@ -12,10 +12,12 @@ try {
   console.log('[Notice]: Native pdf-to-printer module optional fallback active.');
 }
 
+dotenv.config({ path: path.join(__dirname, '.env') });
+dotenv.config({ path: path.join(__dirname, '../backend/.env') });
 dotenv.config({ path: path.join(__dirname, '../.env') });
 
 const SERVER_URL = process.env.SERVER_URL || 'http://localhost:5000';
-const AGENT_SECRET = process.env.AGENT_SECRET || 'agent_secret_token_998877';
+const AGENT_SECRET = process.env.AGENT_SECRET || 'agent_secret_token_876634';
 
 const tempSpoolDir = path.join(__dirname, './spool');
 if (!fs.existsSync(tempSpoolDir)) {

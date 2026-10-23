@@ -1,5 +1,7 @@
 const express = require('express');
 const router = express.Router();
+const path = require('path');
+const fs = require('fs');
 const mongoose = require('mongoose');
 const { protect, authorize } = require('../middleware/auth');
 const Order = require('../models/Order');
@@ -1165,6 +1167,112 @@ router.put('/shop-details', async (req, res) => {
       message: '✅ Shop details updated successfully!',
       shop
     });
+  } catch (err) {
+    res.status(500).json({ success: false, message: err.message });
+  }
+});
+
+// Stream document directly for shopkeeper browser viewing & printing
+router.get('/document/:docId/view', async (req, res) => {
+  try {
+    const doc = await Document.findById(req.params.docId).select('+fileData');
+    if (!doc || doc.deletedAt) {
+      return res.status(404).send('Document not found or expired');
+    }
+
+    const mimeTypes = {
+      pdf: 'application/pdf',
+      png: 'image/png',
+      jpg: 'image/jpeg',
+      jpeg: 'image/jpeg',
+      webp: 'image/webp',
+      txt: 'text/plain'
+    };
+    const contentType = mimeTypes[doc.fileType?.toLowerCase()] || 'application/pdf';
+
+    res.setHeader('Content-Type', contentType);
+    res.setHeader('Content-Disposition', `inline; filename="${encodeURIComponent(doc.originalFileName || 'document.pdf')}"`);
+
+    if (doc.fileData && doc.fileData.length > 0) {
+      return res.send(doc.fileData);
+    }
+
+    const absolutePath = path.isAbsolute(doc.storageKey)
+      ? doc.storageKey
+      : path.join(__dirname, '../', doc.storageKey);
+
+    if (fs.existsSync(absolutePath)) {
+      return res.sendFile(absolutePath);
+    }
+
+    return res.status(404).send('Physical document file not found on disk');
+  } catch (err) {
+    res.status(500).send('Error loading document: ' + err.message);
+  }
+});
+
+// Download document for counter operator
+router.get('/document/:docId/download', async (req, res) => {
+  try {
+    const doc = await Document.findById(req.params.docId).select('+fileData');
+    if (!doc || doc.deletedAt) {
+      return res.status(404).json({ success: false, message: 'Document not found or expired' });
+    }
+
+    if (doc.fileData && doc.fileData.length > 0) {
+      res.setHeader('Content-Disposition', `attachment; filename="${encodeURIComponent(doc.originalFileName || 'document.pdf')}"`);
+      res.setHeader('Content-Type', doc.fileType === 'pdf' ? 'application/pdf' : 'application/octet-stream');
+      return res.send(doc.fileData);
+    }
+
+    const absolutePath = path.isAbsolute(doc.storageKey)
+      ? doc.storageKey
+      : path.join(__dirname, '../', doc.storageKey);
+
+    if (!fs.existsSync(absolutePath)) {
+      return res.status(404).json({ success: false, message: 'Physical file not found' });
+    }
+
+    res.download(absolutePath, doc.originalFileName);
+  } catch (err) {
+    res.status(500).json({ success: false, message: err.message });
+  }
+});
+
+// Manually or browser-printed status updater
+router.post('/mark-printed', async (req, res) => {
+  try {
+    const { orderId, method = 'BROWSER_PRINT' } = req.body;
+    const order = await Order.findById(orderId);
+    if (!order) {
+      return res.status(404).json({ success: false, message: 'Order not found' });
+    }
+
+    order.status = 'PRINTED';
+    order.printCount += 1;
+    order.printedToPrinter = method === 'BROWSER_PRINT' ? 'Browser Print Dialog' : 'Counter Printer';
+    order.printedAt = new Date();
+    await order.save();
+
+    await AuditLog.create({
+      orderId: order._id,
+      staffId: req.user._id,
+      action: 'ORDER_PRINTED',
+      metadata: { publicOrderId: order.publicOrderId, method }
+    });
+
+    const io = req.app.get('io');
+    if (io) {
+      io.emit('order_status_updated', {
+        orderId: order._id,
+        publicOrderId: order.publicOrderId,
+        status: 'PRINTED',
+        printCount: order.printCount,
+        printedToPrinter: order.printedToPrinter
+      });
+    }
+
+    res.json({ success: true, message: `Order ${order.publicOrderId} marked as printed`, order });
   } catch (err) {
     res.status(500).json({ success: false, message: err.message });
   }

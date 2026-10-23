@@ -307,33 +307,6 @@ export default function DeveloperAdminPortal({ setCurrentView }) {
             >
               AUTHENTICATE DEVELOPER PORTAL
             </button>
-
-            <button
-              type="button"
-              onClick={async () => {
-                setLoginError('');
-                try {
-                  try {
-                    await login('8766341212', 'admin@secureprint');
-                  } catch (_) {
-                    await login('7777777777', 'developer123');
-                  }
-                  setUnauthorized(false);
-                  fetchAnalytics();
-                  fetchUsers();
-                  fetchStaff();
-                  fetchPrinters();
-                  fetchAuditLogs();
-                  fetchSettings();
-                } catch (err) {
-                  setLoginError('Developer login failed: ' + err.message);
-                }
-              }}
-              className="w-full py-3 bg-slate-950 hover:bg-slate-800 text-cyan-400 font-bold text-xs rounded-xl border border-cyan-500/20 transition-all text-center flex items-center justify-center gap-2 cursor-pointer"
-            >
-              <span>⚡ One-Click Developer Key Login</span>
-              <span className="text-[10px] text-slate-400">(8766341212)</span>
-            </button>
           </form>
 
           <div className="pt-2 text-center border-t border-slate-800 flex justify-between text-xs">
