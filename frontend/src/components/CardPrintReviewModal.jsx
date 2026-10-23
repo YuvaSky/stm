@@ -46,10 +46,12 @@ export default function CardPrintReviewModal({
   const [croppingIdx, setCroppingIdx] = useState(null);
   const [cropInset, setCropInset] = useState({ top: 10, right: 10, bottom: 10, left: 10 });
 
-  // Extract all available uploaded images dynamically
-  const rawImages = cardData.pageImages?.length > 0
-    ? cardData.pageImages
-    : [cardData.frontUrl, cardData.backUrl, cardData.fileUrl].filter(Boolean);
+  // Extract all available uploaded images dynamically (prefer local blob previewUrls if available)
+  const rawImages = cardData.previewUrls?.length > 0
+    ? cardData.previewUrls
+    : cardData.pageImages?.length > 0
+      ? cardData.pageImages
+      : [cardData.frontUrl, cardData.backUrl, cardData.fileUrl].filter(Boolean);
 
   // Interactive Drag State for Corner Handles
   const [activeHandle, setActiveHandle] = useState(null);
@@ -135,6 +137,11 @@ export default function CardPrintReviewModal({
           backUrl: updatedImages[1] || cardData.backUrl
         });
       }
+      setCroppingIdx(null);
+    };
+    image.onerror = () => {
+      console.warn('Image could not be loaded into canvas for cropping.');
+      alert('Could not crop this image. Please check your image format or upload again.');
       setCroppingIdx(null);
     };
   };
@@ -381,6 +388,10 @@ export default function CardPrintReviewModal({
                         alt={`Uploaded Image ${idx + 1}`}
                         style={{ transform: `rotate(${imageRotations[idx] || 0}deg)` }}
                         className="max-h-full max-w-full object-contain transition-transform duration-300"
+                        onError={(e) => {
+                          e.target.onerror = null;
+                          e.target.src = "data:image/svg+xml;charset=UTF-8,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20width%3D%2280%22%20height%3D%2280%22%20viewBox%3D%220%200%2024%2024%22%20fill%3D%22none%22%20stroke%3D%22%2394a3b8%22%20stroke-width%3D%221.5%22%3E%3Crect%20x%3D%223%22%20y%3D%223%22%20width%3D%2218%22%20height%3D%2218%22%20rx%3D%222%22%2F%3E%3Ccircle%20cx%3D%228.5%22%20cy%3D%228.5%22%20r%3D%221.5%22%2F%3E%3Cpath%20d%3D%22M21%2015l-5-5L5%2021%22%2F%3E%3C%2Fsvg%3E";
+                        }}
                       />
                     </div>
                     <div className="flex items-center justify-between gap-1 text-[10px]">
@@ -770,6 +781,10 @@ export default function CardPrintReviewModal({
                                 transform: `rotate(${imageRotations[activeImageIdx] || 0}deg) scale(${sizeMode === 'CUSTOM' ? customScale / 100 : sizeMode === 'FIT_PAGE' ? 1.1 : 1.0})`
                               }}
                               className="max-w-full max-h-full object-contain rounded-xs shadow-xs"
+                              onError={(e) => {
+                                e.target.onerror = null;
+                                e.target.src = "data:image/svg+xml;charset=UTF-8,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20width%3D%22120%22%20height%3D%22120%22%20viewBox%3D%220%200%2024%2024%22%20fill%3D%22none%22%20stroke%3D%22%2394a3b8%22%20stroke-width%3D%221.5%22%3E%3Crect%20x%3D%223%22%20y%3D%223%22%20width%3D%2218%22%20height%3D%2218%22%20rx%3D%222%22%2F%3E%3Ccircle%20cx%3D%228.5%22%20cy%3D%228.5%22%20r%3D%221.5%22%2F%3E%3Cpath%20d%3D%22M21%2015l-5-5L5%2021%22%2F%3E%3C%2Fsvg%3E";
+                              }}
                             />
                           </div>
                           {isSeparatePages && totalPages > 1 && (
@@ -813,6 +828,10 @@ export default function CardPrintReviewModal({
                                         transform: `rotate(${imageRotations[globalIdx] || 0}deg) scale(${sizeMode === 'CUSTOM' ? customScale / 100 : 1.0})`
                                       }}
                                       className="max-w-full max-h-full object-contain rounded-xs shadow-xs"
+                                      onError={(e) => {
+                                        e.target.onerror = null;
+                                        e.target.src = "data:image/svg+xml;charset=UTF-8,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20width%3D%22120%22%20height%3D%22120%22%20viewBox%3D%220%200%2024%2024%22%20fill%3D%22none%22%20stroke%3D%22%2394a3b8%22%20stroke-width%3D%221.5%22%3E%3Crect%20x%3D%223%22%20y%3D%223%22%20width%3D%2218%22%20height%3D%2218%22%20rx%3D%222%22%2F%3E%3Ccircle%20cx%3D%228.5%22%20cy%3D%228.5%22%20r%3D%221.5%22%2F%3E%3Cpath%20d%3D%22M21%2015l-5-5L5%2021%22%2F%3E%3C%2Fsvg%3E";
+                                      }}
                                     />
                                   </div>
                                 </div>
@@ -845,6 +864,10 @@ export default function CardPrintReviewModal({
                                         transform: `rotate(${imageRotations[globalIdx] || 0}deg) scale(${sizeMode === 'CUSTOM' ? customScale / 100 : 1.0})`
                                       }}
                                       className="max-w-full max-h-full object-contain rounded-xs shadow-xs"
+                                      onError={(e) => {
+                                        e.target.onerror = null;
+                                        e.target.src = "data:image/svg+xml;charset=UTF-8,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20width%3D%22120%22%20height%3D%22120%22%20viewBox%3D%220%200%2024%2024%22%20fill%3D%22none%22%20stroke%3D%22%2394a3b8%22%20stroke-width%3D%221.5%22%3E%3Crect%20x%3D%223%22%20y%3D%223%22%20width%3D%2218%22%20height%3D%2218%22%20rx%3D%222%22%2F%3E%3Ccircle%20cx%3D%228.5%22%20cy%3D%228.5%22%20r%3D%221.5%22%2F%3E%3Cpath%20d%3D%22M21%2015l-5-5L5%2021%22%2F%3E%3C%2Fsvg%3E";
+                                      }}
                                     />
                                   </div>
                                 </div>

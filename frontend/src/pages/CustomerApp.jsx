@@ -197,9 +197,21 @@ export default function CustomerApp() {
         // Check if uploaded files are all images (e.g. Front & Back photos)
         const allImages = uploadedDocs.every(d => imageExtensions.includes(d.fileType?.toLowerCase()));
 
+        // Generate reliable browser object URLs for instant previews without relying on network
+        const localPreviews = files.map(file => {
+          try {
+            return (file.type.startsWith('image/') || file.name.match(/\.(jpg|jpeg|png|webp|heic)$/i))
+              ? URL.createObjectURL(file)
+              : null;
+          } catch (e) {
+            return null;
+          }
+        });
+
         if (uploadedDocs.length >= 2 && allImages) {
           // Multi-image upload: Default to clean separate pages (1 photo per page)
-          const pageImages = uploadedDocs.map(d => d.fileUrl);
+          const validPreviews = localPreviews.filter(Boolean);
+          const pageImages = validPreviews.length === uploadedDocs.length ? validPreviews : uploadedDocs.map(d => d.fileUrl);
           const totalCount = uploadedDocs.length;
           const isTwoSidedCard = totalCount === 2;
 
@@ -210,9 +222,11 @@ export default function CustomerApp() {
               : `Photo Document (${totalCount} Pages)`,
             fileType: 'image',
             fileUrl: uploadedDocs[0].fileUrl,
-            frontUrl: uploadedDocs[0].fileUrl,
-            backUrl: uploadedDocs[1]?.fileUrl || uploadedDocs[0].fileUrl,
+            frontUrl: pageImages[0] || uploadedDocs[0].fileUrl,
+            backUrl: pageImages[1] || uploadedDocs[1]?.fileUrl || uploadedDocs[0].fileUrl,
             pageImages: pageImages,
+            previewUrls: pageImages,
+            previewUrl: pageImages[0] || uploadedDocs[0].fileUrl,
             tempPath: uploadedDocs[0].tempPath,
             allTempPaths: uploadedDocs.map(d => d.tempPath),
             totalPages: totalCount, // Default to 1 photo per page (e.g. 3 photos = 3 pages)
@@ -233,17 +247,21 @@ export default function CustomerApp() {
           setDocuments(prev => [...prev, combinedDoc]);
         } else {
           // Standard single file / PDF upload mapping
-          const newDocs = uploadedDocs.map(d => {
+          const newDocs = uploadedDocs.map((d, i) => {
             const totalPages = d.totalPages || d.pageCount || 1;
+            const blobUrl = localPreviews[i];
             return {
               ...d,
+              previewUrl: blobUrl || d.fileUrl,
+              previewUrls: blobUrl ? [blobUrl] : [d.fileUrl],
+              pageImages: blobUrl ? [blobUrl] : [d.fileUrl],
               id: d.id || `doc_${Date.now()}_${Math.random().toString(36).substring(7)}`,
               totalPages: totalPages,
               pageCount: totalPages,
               pageRange: 'ALL',
               pageSelectionMode: 'ALL',
               pageRangeInput: `1-${totalPages}`,
-              selectedPages: Array.from({ length: totalPages }, (_, i) => i + 1),
+              selectedPages: Array.from({ length: totalPages }, (_, idx) => idx + 1),
               paperSize: 'A4',
               colorMode: 'BW',
               sides: 'SINGLE',
@@ -262,8 +280,12 @@ export default function CustomerApp() {
 
   const handleCapturedDoc = (capturedDoc) => {
     const totalPages = capturedDoc.pageCount || 1;
+    const preview = capturedDoc.previewUrl || capturedDoc.fileUrl;
     const newDoc = {
       ...capturedDoc,
+      previewUrl: preview,
+      previewUrls: capturedDoc.previewUrls || (preview ? [preview] : []),
+      pageImages: capturedDoc.pageImages || (preview ? [preview] : []),
       id: capturedDoc.id || `doc_${Date.now()}`,
       totalPages: totalPages,
       pageCount: totalPages,
@@ -695,9 +717,10 @@ export default function CustomerApp() {
                         // Open Card & Photo Studio Print Review Modal for images & cards
                         setCardReviewData({
                           ...doc,
-                          frontUrl: doc.frontUrl || doc.pageImages?.[0] || doc.fileUrl,
-                          backUrl: doc.backUrl || doc.pageImages?.[1] || doc.fileUrl,
-                          pageImages: doc.pageImages || [doc.fileUrl].filter(Boolean),
+                          frontUrl: doc.previewUrls?.[0] || doc.frontUrl || doc.pageImages?.[0] || doc.fileUrl,
+                          backUrl: doc.previewUrls?.[1] || doc.backUrl || doc.pageImages?.[1] || doc.fileUrl,
+                          pageImages: (doc.previewUrls && doc.previewUrls.length > 0) ? doc.previewUrls : (doc.pageImages || [doc.fileUrl].filter(Boolean)),
+                          previewUrls: (doc.previewUrls && doc.previewUrls.length > 0) ? doc.previewUrls : (doc.pageImages || [doc.fileUrl].filter(Boolean)),
                           combine2On1: doc.combine2On1,
                           layoutMode: doc.layoutMode || (doc.combine2On1 === false ? 'SEPARATE_PAGES' : 'SIDE_BY_SIDE')
                         });
@@ -1022,40 +1045,56 @@ export default function CustomerApp() {
 
           {/* Payment & Submit Bar */}
           <div className="pt-3 border-t border-slate-200 flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3">
-            <div className="flex items-center space-x-2 w-full sm:w-auto">
-              <span className="text-xs text-slate-500 font-semibold shrink-0">Pay Method:</span>
-              <div className="flex bg-slate-100 p-1 rounded-xl border border-slate-200 text-xs flex-1 sm:flex-initial">
+            <div className="flex flex-col sm:flex-row sm:items-center gap-2 w-full sm:w-auto">
+              <span className="text-xs text-slate-500 font-semibold shrink-0 flex items-center gap-1">
+                <span>Pay Method:</span>
+                <span className="text-[10px] text-emerald-600 font-extrabold uppercase bg-emerald-50 px-1.5 py-0.5 rounded border border-emerald-200 sm:hidden">
+                  0% Extra Fee
+                </span>
+              </span>
+              <div className="flex bg-slate-100 p-1 rounded-xl border border-slate-200 text-xs w-full sm:w-auto gap-1">
                 <button
                   type="button"
                   onClick={() => setPaymentMethod('UPI')}
-                  className={`flex-1 sm:flex-none px-3 py-1.5 rounded-lg font-bold transition-all ${paymentMethod === 'UPI' ? 'bg-emerald-600 text-white shadow-xs' : 'text-slate-600'}`}
+                  className={`flex-1 sm:flex-none px-3.5 py-2 rounded-lg font-black transition-all flex items-center justify-center gap-1.5 cursor-pointer ${
+                    paymentMethod === 'UPI'
+                      ? 'bg-gradient-to-r from-emerald-600 to-teal-600 text-white shadow-sm ring-2 ring-emerald-500/20'
+                      : 'text-slate-600 hover:text-slate-900 hover:bg-slate-200/60'
+                  }`}
                 >
-                  ⚡ Direct UPI (0% Fee)
+                  <span>⚡ Direct UPI (0% Fee)</span>
+                  <span className="text-[9px] bg-white/20 text-white px-1.5 py-0.2 rounded font-extrabold hidden sm:inline">
+                    RECOMMENDED
+                  </span>
                 </button>
                 <button
                   type="button"
                   onClick={() => setPaymentMethod('CASH')}
-                  className={`flex-1 sm:flex-none px-3 py-1.5 rounded-lg font-bold transition-all ${paymentMethod === 'CASH' ? 'bg-emerald-600 text-white shadow-xs' : 'text-slate-600'}`}
+                  className={`flex-1 sm:flex-none px-3 py-2 rounded-lg font-bold transition-all flex items-center justify-center gap-1 cursor-pointer ${
+                    paymentMethod === 'CASH'
+                      ? 'bg-slate-800 text-white shadow-sm'
+                      : 'text-slate-600 hover:text-slate-900 hover:bg-slate-200/60'
+                  }`}
                 >
-                  💵 Cash Counter
+                  <span>💵 Cash Counter</span>
                 </button>
               </div>
             </div>
 
             <div className="flex items-center justify-between sm:justify-end gap-3 sm:gap-4 w-full sm:w-auto pt-2 sm:pt-0 border-t sm:border-t-0 border-slate-100">
               <div className="shrink-0">
-                <span className="text-[9px] text-slate-500 block">TOTAL ESTIMATE</span>
-                <span className="text-xl sm:text-2xl font-black text-emerald-600">₹{totalPrice}</span>
+                <span className="text-[9px] text-slate-500 block font-bold">TOTAL ESTIMATE</span>
+                <span className="text-2xl sm:text-3xl font-black text-emerald-600">₹{totalPrice}</span>
               </div>
 
               <button
                 type="button"
                 onClick={handleInitiateOrder}
                 disabled={loading}
-                className="flex-1 sm:flex-initial px-5 py-3 sm:py-2.5 rounded-xl bg-gradient-to-r from-emerald-600 via-teal-600 to-cyan-600 hover:from-emerald-500 hover:to-cyan-500 text-white font-extrabold text-xs sm:text-sm shadow-md flex items-center justify-center space-x-1.5 transition-all active:scale-95 disabled:opacity-50 cursor-pointer"
+                className="flex-1 sm:flex-initial px-6 py-3 rounded-xl bg-gradient-to-r from-emerald-600 via-teal-600 to-cyan-600 hover:from-emerald-500 hover:to-cyan-500 text-white font-black text-xs sm:text-sm shadow-md flex items-center justify-center space-x-2 transition-all active:scale-95 disabled:opacity-50 cursor-pointer"
               >
                 <Send className="w-4 h-4" />
-                <span>{loading ? 'Processing...' : paymentMethod === 'UPI' ? 'PAY & PLACE ORDER' : 'PLACE PRINT ORDER'}</span>
+                <span>{loading ? 'Processing...' : paymentMethod === 'UPI' ? '⚡ PAY VIA UPI & ORDER' : 'PLACE PRINT ORDER'}</span>
               </button>
             </div>
           </div>

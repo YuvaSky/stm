@@ -81,6 +81,15 @@ apiRouter.use('/shopkeeper', shopkeeperRoutes);
 apiRouter.use('/agent', agentRoutes);
 apiRouter.use('/admin', adminRoutes);
 
+const os = require('os');
+const uploadsLocal = path.join(__dirname, '../uploads');
+const uploadsTmp = path.join(os.tmpdir(), 'uploads_temp');
+
+app.use('/uploads', express.static(uploadsLocal));
+app.use('/uploads', express.static(uploadsTmp));
+app.use('/.netlify/functions/api/uploads', express.static(uploadsLocal));
+app.use('/.netlify/functions/api/uploads', express.static(uploadsTmp));
+
 // Mount router on /api and /.netlify/functions/api
 app.use('/api', apiRouter);
 app.use('/.netlify/functions/api', apiRouter);

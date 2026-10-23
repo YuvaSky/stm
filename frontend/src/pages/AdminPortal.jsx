@@ -384,26 +384,26 @@ export default function AdminPortal({ setCurrentView }) {
     <div className="min-h-screen bg-slate-950 text-slate-100 font-['Plus_Jakarta_Sans',sans-serif] pb-12">
       
       {/* Standalone Admin Header Bar */}
-      <header className="sticky top-0 z-40 bg-slate-900/90 backdrop-blur-md border-b border-slate-800 px-4 sm:px-8 py-3.5 flex items-center justify-between shadow-xl">
-        <div className="flex items-center space-x-3">
-          <div className="w-10 h-10 rounded-2xl bg-gradient-to-tr from-purple-600 to-indigo-600 flex items-center justify-center shadow-md shadow-purple-600/30">
+      <header className="sticky top-0 z-40 bg-slate-900/90 backdrop-blur-md border-b border-slate-800 px-3.5 sm:px-8 py-3 flex flex-col sm:flex-row sm:items-center justify-between gap-3 shadow-xl">
+        <div className="flex items-center space-x-3 min-w-0">
+          <div className="w-10 h-10 rounded-2xl bg-gradient-to-tr from-purple-600 to-indigo-600 flex items-center justify-center shadow-md shadow-purple-600/30 shrink-0">
             <Shield className="w-5 h-5 text-white" />
           </div>
-          <div>
-            <div className="flex items-center gap-2">
-              <span className="font-black text-lg text-white tracking-tight">SECURE<span className="text-purple-400">PRINT</span></span>
-              <span className="text-[10px] font-extrabold px-2 py-0.5 rounded-full bg-purple-500/20 text-purple-300 border border-purple-500/30 uppercase">
-                SUPER ADMIN PORTAL
+          <div className="min-w-0">
+            <div className="flex items-center gap-2 flex-wrap">
+              <span className="font-black text-base sm:text-lg text-white tracking-tight">SECURE<span className="text-purple-400">PRINT</span></span>
+              <span className="text-[10px] font-extrabold px-2 py-0.5 rounded-full bg-purple-500/20 text-purple-300 border border-purple-500/30 uppercase shrink-0">
+                SUPER ADMIN
               </span>
             </div>
-            <p className="text-[11px] text-slate-400 hidden sm:block">Central Control System & User Registration Management</p>
+            <p className="text-[10px] sm:text-[11px] text-slate-400 hidden sm:block truncate">Central Control System & User Registration Management</p>
           </div>
         </div>
 
-        <div className="flex items-center space-x-2">
+        <div className="flex items-center gap-1.5 overflow-x-auto w-full sm:w-auto pb-0.5 sm:pb-0 scrollbar-none">
           <button
             onClick={() => setCurrentView('shopkeeper')}
-            className="px-3 py-2 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-200 font-bold text-xs border border-slate-700 flex items-center gap-1.5 transition-all cursor-pointer"
+            className="px-2.5 sm:px-3 py-1.5 sm:py-2 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-200 font-bold text-xs border border-slate-700 flex items-center gap-1.5 transition-all cursor-pointer shrink-0"
           >
             <ArrowLeft className="w-4 h-4 text-cyan-400" />
             <span className="hidden sm:inline">Shop Counter</span>
@@ -414,11 +414,10 @@ export default function AdminPortal({ setCurrentView }) {
               setNewUser({ name: '', mobile: '', email: '', password: '', role: 'STAFF', shopName: '', address: '' });
               setIsAddUserOpen(true);
             }}
-            className="px-3.5 py-2 rounded-xl bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-500 hover:to-indigo-500 text-white font-black text-xs shadow-md flex items-center gap-1.5 transition-all cursor-pointer"
+            className="px-3 sm:px-3.5 py-1.5 sm:py-2 rounded-xl bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-500 hover:to-indigo-500 text-white font-black text-xs shadow-md flex items-center gap-1.5 transition-all cursor-pointer shrink-0"
           >
             <Store className="w-4 h-4 text-purple-200" />
-            <span className="hidden sm:inline">+ Add Print Shop</span>
-            <span className="sm:hidden">+ Shop</span>
+            <span>+ Add Shop</span>
           </button>
 
           <button
@@ -426,16 +425,16 @@ export default function AdminPortal({ setCurrentView }) {
               setNewUser({ name: '', mobile: '', email: '', password: '', role: 'CUSTOMER', shopName: '', address: '' });
               setIsAddUserOpen(true);
             }}
-            className="px-3 py-2 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-200 font-bold text-xs border border-slate-700 flex items-center gap-1.5 transition-all cursor-pointer"
+            className="px-2.5 sm:px-3 py-1.5 sm:py-2 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-200 font-bold text-xs border border-slate-700 flex items-center gap-1.5 transition-all cursor-pointer shrink-0"
           >
             <UserPlus className="w-4 h-4 text-slate-400" />
-            <span className="hidden sm:inline">Add User</span>
+            <span>+ User</span>
           </button>
 
           <div className="h-6 w-px bg-slate-800 hidden sm:block" />
 
           {/* Admin User Info & Logout */}
-          <div className="flex items-center space-x-2 bg-slate-800/80 px-3 py-1.5 rounded-xl border border-slate-700">
+          <div className="flex items-center space-x-1.5 sm:space-x-2 bg-slate-800/80 px-2 sm:px-3 py-1 sm:py-1.5 rounded-xl border border-slate-700 shrink-0 ml-auto sm:ml-0">
             <div className="w-6 h-6 rounded-full bg-purple-600 text-white font-bold text-xs flex items-center justify-center">
               {user?.name?.charAt(0) || 'A'}
             </div>

@@ -18,7 +18,8 @@ export default function DirectUpiPaymentModal({
   if (!isOpen) return null;
 
   // Resolve Shop's UPI ID (or fallback)
-  const shopUpi = shopInfo?.upiId?.trim() || 
+  const shopUpi = shopInfo?.settings?.paymentGateway?.upiId?.trim() || 
+    shopInfo?.upiId?.trim() || 
     (shopInfo?.phone ? `${shopInfo.phone.replace(/\D/g, '')}@upi` : 'secureprint@upi');
   const shopName = shopInfo?.name || 'Secure Print Shop';
   const orderRef = `ORD-${Date.now().toString().slice(-6)}`;

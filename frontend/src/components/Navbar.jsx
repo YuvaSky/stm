@@ -92,9 +92,26 @@ export default function Navbar({ currentView, setCurrentView }) {
             )}
           </div>
 
-          {/* Right Action / Profile with Working Logout */}
+          {/* Right Action / Profile */}
           <div className="hidden md:flex items-center space-x-2">
-            {user ? (
+            {currentView === 'customer' ? (
+              <div className="flex items-center space-x-2">
+                <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-cyan-50/80 border border-cyan-200/60 text-cyan-800 text-xs font-bold">
+                  <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></span>
+                  <span>Self-Service Print Desk</span>
+                </div>
+                {isStaffOrAdmin && (
+                  <button
+                    onClick={() => setCurrentView('shopkeeper')}
+                    className="px-3 py-1.5 text-xs font-bold bg-blue-50 text-blue-700 hover:bg-blue-100 border border-blue-200 rounded-xl flex items-center gap-1.5 transition-all cursor-pointer shadow-2xs"
+                    title="Return to Shop Counter Desk"
+                  >
+                    <Store className="w-3.5 h-3.5 text-blue-600" />
+                    <span>Counter Desk →</span>
+                  </button>
+                )}
+              </div>
+            ) : user ? (
               <div className="flex items-center space-x-2 bg-slate-50 px-3 py-1.5 rounded-xl border border-slate-200">
                 <div className="w-6 h-6 rounded-full bg-blue-600 text-white flex items-center justify-center font-bold text-xs">
                   {(user.shopName || user.name || 'U').charAt(0).toUpperCase()}
@@ -119,29 +136,24 @@ export default function Navbar({ currentView, setCurrentView }) {
                   <span>Logout</span>
                 </button>
               </div>
-            ) : currentView === 'shopkeeper' ? (
+            ) : (
               <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-blue-50/80 border border-blue-200/60 text-blue-800 text-xs font-bold">
                 <Store className="w-3.5 h-3.5 text-blue-600" />
                 <span>Shop Counter Portal</span>
-              </div>
-            ) : (
-              <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-cyan-50/80 border border-cyan-200/60 text-cyan-800 text-xs font-bold">
-                <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></span>
-                <span>Self-Service Print Desk</span>
               </div>
             )}
           </div>
 
           {/* Mobile Hamburger Menu Button */}
           <div className="md:hidden flex items-center space-x-2">
-            {user && (
+            {user && currentView !== 'customer' && (
               <span className="text-[10px] font-bold px-2 py-0.5 rounded bg-blue-100 text-blue-800 border border-blue-200">
                 {user.role}
               </span>
             )}
             <button
               onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
-              className="p-2 rounded-xl bg-slate-100 text-slate-700 hover:text-slate-900 border border-slate-200"
+              className="p-2 rounded-xl bg-slate-100 text-slate-700 hover:text-slate-900 border border-slate-200 cursor-pointer"
             >
               {mobileMenuOpen ? <X className="w-5 h-5" /> : <Menu className="w-5 h-5" />}
             </button>
@@ -182,7 +194,7 @@ export default function Navbar({ currentView, setCurrentView }) {
               </div>
             )}
 
-            {user && (
+            {user && currentView !== 'customer' && (
               <div className="pt-2 border-t border-slate-100 flex items-center justify-between">
                 <div>
                   <p className="text-xs font-bold text-slate-800">{user.name}</p>
