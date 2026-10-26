@@ -61,10 +61,21 @@ export default function PrintAgentModal({ isOpen, onClose }) {
         const match = line.match(/^(\S.*?\S)\s{2,}/);
         return match ? match[1].trim() : line.trim();
       }).filter(n => n && n !== 'Name');
-      setPrintersList(Array.from(new Set(names)));
+      setPrintersList(Array.from(new Set(names)).map(n => ({ name: n, interfaceType: 'Direct', icon: '🖨️' })));
     } else if (Array.isArray(printersRaw)) {
-      const names = printersRaw.map(p => (typeof p === 'string' ? p : p.name)).filter(Boolean);
-      setPrintersList(Array.from(new Set(names)));
+      const formatted = printersRaw.map(p => {
+        if (typeof p === 'string') return { name: p, interfaceType: 'Direct', icon: '🖨️' };
+        return {
+          name: p.name,
+          isDefault: p.isDefault,
+          interfaceType: p.interfaceType || 'Direct',
+          icon: p.icon || (p.interfaceType === 'USB' ? '🔌' : p.interfaceType?.includes('Wi-Fi') ? '📶' : p.interfaceType === 'Bluetooth' ? '🔵' : '🖨️'),
+          status: p.status || 'Ready'
+        };
+      }).filter(p => Boolean(p.name));
+      const map = new Map();
+      formatted.forEach(p => map.set(p.name, p));
+      setPrintersList(Array.from(map.values()));
     }
   };
 
@@ -231,9 +242,45 @@ export default function PrintAgentModal({ isOpen, onClose }) {
 
             {/* Target Printer Selection */}
             <div className="pt-3 border-t border-slate-200/80 space-y-2">
-              <label className="text-xs font-bold text-slate-700 block">
-                Target Connected Printer for Auto-Print:
-              </label>
+              <div className="flex items-center justify-between">
+                <label className="text-xs font-bold text-slate-700 block">
+                  Target Connected Printer for Auto-Print:
+                </label>
+                <span className="text-[10px] font-bold text-slate-500">
+                  {printersList.length} Connected Printer(s)
+                </span>
+              </div>
+
+              {/* Detected Hardware Interface Badges */}
+              {printersList.length > 0 && (
+                <div className="flex flex-wrap gap-1.5 pb-1">
+                  {printersList.map((p, idx) => {
+                    const name = typeof p === 'string' ? p : p.name;
+                    const type = typeof p === 'string' ? 'Direct' : (p.interfaceType || 'Direct');
+                    const icon = typeof p === 'string' ? '🖨️' : (p.icon || '🖨️');
+                    return (
+                      <span
+                        key={idx}
+                        className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-lg text-[10px] font-bold border ${
+                          type === 'USB'
+                            ? 'bg-blue-50 text-blue-800 border-blue-200'
+                            : type.includes('Wi-Fi')
+                            ? 'bg-emerald-50 text-emerald-800 border-emerald-200'
+                            : type === 'Bluetooth'
+                            ? 'bg-indigo-50 text-indigo-800 border-indigo-200'
+                            : 'bg-slate-50 text-slate-700 border-slate-200'
+                        }`}
+                        title={`${name} (${type})`}
+                      >
+                        <span>{icon}</span>
+                        <span className="truncate max-w-[120px]">{name}</span>
+                        <span className="text-[9px] opacity-75">[{type}]</span>
+                      </span>
+                    );
+                  })}
+                </div>
+              )}
+
               <div className="flex gap-2">
                 <select
                   value={preferredPrinter}
@@ -241,11 +288,18 @@ export default function PrintAgentModal({ isOpen, onClose }) {
                   className="flex-1 bg-white border border-slate-300 rounded-xl p-2.5 text-xs text-slate-900 font-bold focus:outline-none focus:border-cyan-600 shadow-2xs"
                 >
                   <option value="AUTO">⚡ Auto-Route (Windows Default Printer)</option>
-                  {printersList.map((p, idx) => (
-                    <option key={idx} value={p}>🖨️ {p}</option>
-                  ))}
-                  {!printersList.includes('Microsoft Print to PDF') && (
-                    <option value="Microsoft Print to PDF">🖨️ Microsoft Print to PDF</option>
+                  {printersList.map((p, idx) => {
+                    const name = typeof p === 'string' ? p : p.name;
+                    const type = typeof p === 'string' ? 'Direct' : (p.interfaceType || 'Direct');
+                    const icon = typeof p === 'string' ? '🖨️' : (p.icon || '🖨️');
+                    return (
+                      <option key={idx} value={name}>
+                        {icon} {name} [{type}]
+                      </option>
+                    );
+                  })}
+                  {!printersList.some(p => (typeof p === 'string' ? p : p.name) === 'Microsoft Print to PDF') && (
+                    <option value="Microsoft Print to PDF">📄 Microsoft Print to PDF [Virtual]</option>
                   )}
                 </select>
 

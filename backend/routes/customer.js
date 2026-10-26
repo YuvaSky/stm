@@ -581,7 +581,7 @@ router.post('/create-order', protect, async (req, res) => {
 
     // Auto-Print: If enabled, automatically dispatch document directly to connected printer
     const isAutoPrint = shop.settings?.autoPrint !== false;
-    if (isAutoPrint && order.status === 'PAID') {
+    if (isAutoPrint) {
       try {
         await dispatchPrintJob({
           orderId: order._id,

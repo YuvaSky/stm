@@ -529,7 +529,10 @@ router.get('/agent-status', (req, res) => {
           list.push({
             name: p.name,
             isDefault: Boolean(p.isDefault),
-            status: p.status || 'Ready'
+            status: p.status || 'Ready',
+            interfaceType: p.interfaceType || 'Direct Hardware',
+            port: p.port || '',
+            icon: p.icon || '🖨️'
           });
         }
       });

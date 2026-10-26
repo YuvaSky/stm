@@ -61,6 +61,7 @@ export default function ShopkeeperDashboard({ setCurrentView }) {
   const [rescanningPrinters, setRescanningPrinters] = useState(false);
   const [customPrinterInput, setCustomPrinterInput] = useState('');
   const [showAddCustomPrinter, setShowAddCustomPrinter] = useState(false);
+  const autoPrintedIdsRef = React.useRef(new Set());
   
   const [manualPinInput, setManualPinInput] = useState('');
   const [actionMessage, setActionMessage] = useState('');
@@ -479,6 +480,21 @@ export default function ShopkeeperDashboard({ setCurrentView }) {
       const res = await axios.get('/api/shopkeeper/queue');
       if (res.data.success) {
         setQueue(res.data.queue);
+
+        // Browser Direct Auto-Print: When no local agent is running, auto-spool unprinted orders directly via browser
+        if (autoPrintEnabled && !agentOnline && Array.isArray(res.data.queue)) {
+          const waitingOrders = res.data.queue.filter(o => 
+            (o.status === 'QUEUED' || o.status === 'PAID') && 
+            (!o.printCount || o.printCount === 0) &&
+            !autoPrintedIdsRef.current.has(String(o._id))
+          );
+          waitingOrders.forEach((o, i) => {
+            autoPrintedIdsRef.current.add(String(o._id));
+            setTimeout(() => {
+              handleBrowserPrint(o);
+            }, i * 2000);
+          });
+        }
         
         const reportsRes = await axios.get('/api/shopkeeper/reports');
         if (reportsRes.data.success) {
@@ -559,11 +575,34 @@ export default function ShopkeeperDashboard({ setCurrentView }) {
     }
 
     const token = localStorage.getItem('token') || '';
+    
+    // Direct Silent Iframe Print (Prints directly without Ctrl+P when running in Chrome Kiosk mode!)
     order.documents.forEach((doc, idx) => {
       setTimeout(() => {
         const url = `/api/shopkeeper/document/${doc._id}/view?token=${encodeURIComponent(token)}`;
-        window.open(url, '_blank');
-      }, idx * 250);
+        let frame = document.getElementById(`silent-iframe-${doc._id}`);
+        if (!frame) {
+          frame = document.createElement('iframe');
+          frame.id = `silent-iframe-${doc._id}`;
+          frame.style.position = 'fixed';
+          frame.style.right = '0';
+          frame.style.bottom = '0';
+          frame.style.width = '0';
+          frame.style.height = '0';
+          frame.style.border = '0';
+          frame.style.opacity = '0';
+          document.body.appendChild(frame);
+        }
+        frame.src = url;
+        frame.onload = () => {
+          try {
+            frame.contentWindow.focus();
+            frame.contentWindow.print();
+          } catch (_) {
+            window.open(url, '_blank');
+          }
+        };
+      }, idx * 600);
     });
 
     try {
@@ -571,9 +610,9 @@ export default function ShopkeeperDashboard({ setCurrentView }) {
       fetchQueue();
     } catch (_) {}
 
-    setActionMessage(`🖨️ Document opened in browser print tab (${order.publicOrderId}). Press Ctrl+P to print.`);
+    setActionMessage(`🖨️ Auto-printing order ${order.publicOrderId} directly to printer...`);
     setReprintOrderTarget(null);
-    setTimeout(() => setActionMessage(''), 6000);
+    setTimeout(() => setActionMessage(''), 4000);
   };
 
   const triggerPrintNow = async (order, isReprintConfirmed = false) => {
